@@ -54,3 +54,6 @@ box-shadow: 0 0 10px var(--mint-2); */
   color: #888;
 }
 
+h1{
+  color: var(--sea-green);
+}
