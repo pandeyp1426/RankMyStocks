@@ -13,3 +13,5 @@ def random_stock():
 
 stock = random_stock()
 print(stock)
+
+#copied to server.py
