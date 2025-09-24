@@ -24,4 +24,4 @@ url = base + '?' + urllib.parse.urlencode(params)
 Website_link = urllib.request.urlopen(url)
 wjson = Website_link.read()
 wjdata = json.loads(wjson)
-print(wjdata)
+
