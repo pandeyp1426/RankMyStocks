@@ -1,27 +1,20 @@
-import csv
-import random
-import urllib.request
-import json
-import urllib.parse
+import stocks
+from flask import Flask, jsonify
 
-def random_stock():
-    with open("nasdaq_screener_1758143846061.csv", mode='r') as file:
-        reader = csv.reader(file)
-        stock_list = list(reader)
-    
-    if not stock_list:
-        return None
-    
-    return random.choice(stock_list)[0] 
+app = Flask(__name__)
 
-function = "TIME_SERIES_DAILY"
-stock = random_stock()
+#Stocks API Route
+@app.route('/api/stocks/<ticker>')
+def get_stock_info(ticker):
+    stock_info = {
+        "name": stocks.get_company_name(ticker),
+        "price": stocks.get_stock_price(ticker),
+        "pe_ratio": stocks.get_price_earnings_ratio(ticker),
+        "market_cap": stocks.get_market_cap(ticker),
+        "dividend_yield": stocks.get_dividend_yield(ticker),
 
-base = 'https://www.alphavantage.co/query'
-params = {'function': function, 'symbol': stock, 'apikey': '1TOOAS77U9X4GJSC'}
-url = base + '?' + urllib.parse.urlencode(params)
+    }
+    return jsonify(stock_info)
 
-Website_link = urllib.request.urlopen(url)
-wjson = Website_link.read()
-wjdata = json.loads(wjson)
-print(wjdata)
+if __name__ == '__main__':
+    app.run(debug=True)
