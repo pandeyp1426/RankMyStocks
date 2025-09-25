@@ -12,6 +12,7 @@ def get_stock_info(ticker):
         "pe_ratio": stocks.get_price_earnings_ratio(ticker),
         "market_cap": stocks.get_market_cap(ticker),
         "dividend_yield": stocks.get_dividend_yield(ticker),
+        "overview": stocks.get_overview(ticker)
 
     }
     return jsonify(stock_info)
