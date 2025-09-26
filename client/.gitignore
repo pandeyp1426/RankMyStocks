@@ -37,3 +37,6 @@ Thumbs.db
 
 # Data files you don't want in git (optional)
 *.csv
+# Python
+__pycache__/
+*.py[cod]
