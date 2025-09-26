@@ -8,10 +8,10 @@ from langchain_openai import ChatOpenAI
 from langchain.chains import OpenAIModerationChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import OpenAI
-os.environ["OPENAI_API_KEY"] = "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"
 
+os.environ["OPENAI_API_KEY"] = "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"
 def random_stock():
-    with open("server/nasdaq_screener_1758143846061.csv", mode='r') as file:
+    with open("ticker_list.csv", mode='r') as file:
         reader = csv.reader(file)
         stock_list = list(reader)
     
@@ -22,10 +22,11 @@ def random_stock():
 
 stock = random_stock()
 
-moderate=OpenAIModerationChain()
+
 model = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful financial assistant that provides concise and accurate stock information and provide recent events about :{stock} "),])
 
 chain = prompt | model
 response = chain.invoke({"stock": stock})
+print(response)
