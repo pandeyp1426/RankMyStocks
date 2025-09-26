@@ -1,22 +1,39 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./App.css";
 
 function App() {
-  const [stockData, setStockData] = useState(null);
+  const [stock, setStock] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetch("http://localhost:5000/stock")
-      .then((res) => res.json())
-      .then((data) => setStockData(data))
-      .catch((err) => console.error(err));
-  }, []);
-
-  if (!stockData) return <p>Loading…</p>;
+  const getRandomStock = () => {
+    setLoading(true);
+    fetch("http://127.0.0.1:5000/api/random-stock")
+      .then((res) => {
+        if (!res.ok) throw new Error("Network response was not ok");
+        return res.json();
+      })
+      .then((data) => {
+        setStock(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Fetch error:", err);
+        setLoading(false);
+      });
+  };
 
   return (
-    <div>
-      <h1>Random Stock</h1>
-      <pre>{JSON.stringify(stockData, null, 2)}</pre>
+    <div className="app">
+      <button onClick={getRandomStock}>Get Random Stock</button>
+
+      {loading && <p>Loading…</p>}
+
+      {stock && !loading && (
+        <div>
+          <h2>{stock.name} ({stock.ticker})</h2>
+          <p>Price: ${stock.price}</p>
+        </div>
+      )}
     </div>
   );
 }
