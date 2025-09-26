@@ -39,7 +39,7 @@ export function Home() {
       {stock && !loading && (
         <div>
           <h2>{stock.name} ({stock.ticker})</h2>
-          <p>Price: ${stock.price}</p>
+          <p>Price: ${Number(stock.price).toFixed(2)}</p>
         </div>
       )}
     </div>
