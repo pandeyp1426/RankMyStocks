@@ -1,7 +1,10 @@
 import stocks
+from flask_cors import CORS
 from flask import Flask, jsonify
 
+
 app = Flask(__name__)
+CORS(app)
 
 #Stocks API Route
 @app.route('/api/stocks/<ticker>')
