@@ -44,10 +44,17 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
+.questionair-button {
+  margin: 1em 0;
+  max-width: 400px;
+  height: 90px;
+  text-align: left;
+  vertical-align: text-top;
+}
 @media (prefers-color-scheme: light) {
   :root {
     color: #ffffff;
-    background-color: #ffffff;
+    background-color: #000000;
   }
   a:hover {
     color: #ffffff;
