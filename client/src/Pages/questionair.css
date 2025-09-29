@@ -6,7 +6,29 @@
 }
 
 .questionair-button {
+  flex: 1;
+  margin: 0 10px;
   padding: 10px 20px;
   font-size: 16px;
   cursor: pointer;
+  background-color: #52b788; 
+  color: white;
+  border: 2px solid transparent;
+  transition: border 0.2s ease;
+  outline: none; 
+}
+
+
+.questionair-button:hover {
+  border: 2px solid white;
+}
+
+
+.questionair-button:focus {
+  outline: none;
+}
+
+
+.questionair-button:active {
+  border: 2px solid transparent; 
 }
