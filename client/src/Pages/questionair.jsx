@@ -1,21 +1,25 @@
-import { useState, useEffect } from "react";
-import "./questionair.css";
+import { useState, useEffect, useRef } from "react";
+import "./Questionair.css";
 
 export function Questionair() {
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
-  const [selectedStocks, setSelectedStocks] = useState([]); // store picks
+  const [selectedStocks, setSelectedStocks] = useState([]);
+  const didFetchRef = useRef(false); // ref to prevent double fetch
 
-  // Fetch two random stocks and ensure they are different
   const fetchTwoStocks = async () => {
     try {
-      let data1 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
-      let data2;
+      let data1, data2;
 
-      // Keep fetching until we get a different stock
+      // Fetch first stock
+      do {
+        data1 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
+      } while (!data1 || !data1.ticker || !data1.price);
+
+      // Fetch second stock, different from the first
       do {
         data2 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
-      } while (data2.ticker === data1.ticker);
+      } while (!data2 || !data2.ticker || !data2.price || data2.ticker === data1.ticker);
 
       setStock1(data1);
       setStock2(data2);
@@ -24,15 +28,17 @@ export function Questionair() {
     }
   };
 
-  // Run once on mount
+  // Only fetch once even in Strict Mode
   useEffect(() => {
-    fetchTwoStocks();
+    if (!didFetchRef.current) {
+      fetchTwoStocks();
+      didFetchRef.current = true;
+    }
   }, []);
 
-  // Handle selection
   const handlePick = (stock) => {
-    setSelectedStocks([...selectedStocks, stock]); // store the pick
-    fetchTwoStocks(); // refresh both stocks
+    setSelectedStocks([...selectedStocks, stock]);
+    fetchTwoStocks(); // refresh stocks after selection
   };
 
   return (
@@ -47,7 +53,7 @@ export function Questionair() {
         >
           {stock1
             ? `${stock1.name} (${stock1.ticker}) - $${Number(stock1.price).toFixed(2)}`
-            : "Option 1"}
+            : ""}
         </button>
 
         <button
@@ -57,7 +63,7 @@ export function Questionair() {
         >
           {stock2
             ? `${stock2.name} (${stock2.ticker}) - $${Number(stock2.price).toFixed(2)}`
-            : "Option 2"}
+            : ""}
         </button>
       </div>
 
