@@ -2,6 +2,12 @@ import csv
 import json
 import random
 import requests
+from datetime import datetime, timedelta
+
+currentDate = datetime.now()
+previousDate = currentDate - timedelta(days=1)
+dateString = previousDate.strftime("%Y/%m/%d")
+
 
 #premium API Key 75 calls perminute
 API_KEY = "YN7QP69QPEBTJVKO"
@@ -33,7 +39,7 @@ def get_stock_price(ticker):
     data = json.dumps(data, indent=4)
     try:
         data = json.loads(data)
-        close = data['Time Series (Daily)']['2025-09-24']['4. close']
+        close = data['Time Series (Daily)'][dateString]['4. close']
         return close
     except (KeyError, IndexError):
         print("Error retrieving stock price for ticker:", ticker)
