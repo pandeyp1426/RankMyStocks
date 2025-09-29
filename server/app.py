@@ -5,27 +5,34 @@ import random
 import urllib.request
 import json
 import os
+from flask_cors import CORS
+
 from dotenv import load_dotenv
 import urllib.parse
+from stocks import random_stock, get_company_name, get_stock_price
 
 load_dotenv() # Load environment variables from a .env file
-app = Flask(__name__)   # <-- This creates the Flask app
+app = Flask(__name__)   
 
-def random_stock():
-    with open("nasdaq_screener_1758143846061.csv", mode='r') as file:
-        reader = csv.reader(file)
-        stock_list = list(reader)
+CORS(app)
+@app.route("/api/random-stock")
+def random_stock_api():
+    ticker = random_stock()
+    if not ticker:
+        return jsonify({"error": "No ticker found"}), 404
 
-    if not stock_list:
-        return None
-
-    return random.choice(stock_list)[0]
-
-@app.route("/")   # <-- This creates a web route
+    price = get_stock_price(ticker)
+    name = get_company_name(ticker)
+    return jsonify({
+        "ticker": ticker,
+        "name": name,
+        "price": float(price) if price else None
+    })
+@app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
 
-@app.route("/random-stock")
+@app.route("/api/random-stock")
 def get_random_stock():
     function = "TIME_SERIES_DAILY"
     stock = random_stock()
