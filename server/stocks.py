@@ -5,9 +5,10 @@ import requests
 from datetime import datetime, timedelta
 
 currentDate = datetime.now()
-previousDate = currentDate - timedelta(days=1)
-dateString = previousDate.strftime("%Y/%m/%d")
+previousDate = currentDate - timedelta(days=4)
+dateString = previousDate.strftime("%Y-%m-%d")
 
+print(dateString)
 
 #premium API Key 75 calls perminute
 API_KEY = "YN7QP69QPEBTJVKO"
@@ -123,4 +124,5 @@ def get_overview(ticker):
         return None
 
 
-
+stock = get_stock_price("INTC")
+print(stock)
