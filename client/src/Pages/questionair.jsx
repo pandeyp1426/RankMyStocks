@@ -5,7 +5,7 @@ export function Questionair() {
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
   const [selectedStocks, setSelectedStocks] = useState([]);
-  const didFetchRef = useRef(false); // ref to prevent double fetch
+  const didFetchRef = useRef(false);
 
   const fetchTwoStocks = async () => {
     try {
@@ -28,7 +28,7 @@ export function Questionair() {
     }
   };
 
-  // Only fetch once even in Strict Mode
+  // Only fetch once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
       fetchTwoStocks();
@@ -39,6 +39,10 @@ export function Questionair() {
   const handlePick = (stock) => {
     setSelectedStocks([...selectedStocks, stock]);
     fetchTwoStocks(); // refresh stocks after selection
+  };
+
+  const handleReroll = () => {
+    fetchTwoStocks(); // refresh stocks without picking
   };
 
   return (
@@ -64,6 +68,12 @@ export function Questionair() {
           {stock2
             ? `${stock2.name} (${stock2.ticker}) - $${Number(stock2.price).toFixed(2)}`
             : ""}
+        </button>
+      </div>
+
+      <div style={{ marginTop: "20px" }}>
+        <button className="reroll-button" onClick={handleReroll}>
+          Reroll Stocks
         </button>
       </div>
 

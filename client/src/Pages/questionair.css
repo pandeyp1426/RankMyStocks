@@ -32,3 +32,14 @@
 .questionair-button:active {
   border: 2px solid transparent; 
 }
+
+.reroll-button:hover {
+  border: 2px solid white;
+
+}
+.reroll-button:focus {
+  outline: none;
+} 
+.reroll-button:active {
+  border: 2px solid transparent; 
+}  
