@@ -1,0 +1,45 @@
+.button-container {
+  display: flex;             
+  justify-content: space-between; 
+  width: 100%;                 
+  margin: 20px 0;
+}
+
+.questionair-button {
+  flex: 1;
+  margin: 0 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #52b788; 
+  color: white;
+  border: 2px solid transparent;
+  transition: border 0.2s ease;
+  outline: none; 
+}
+
+
+.questionair-button:hover {
+  border: 2px solid white;
+}
+
+
+.questionair-button:focus {
+  outline: none;
+}
+
+
+.questionair-button:active {
+  border: 2px solid transparent; 
+}
+
+.reroll-button:hover {
+  border: 2px solid white;
+
+}
+.reroll-button:focus {
+  outline: none;
+} 
+.reroll-button:active {
+  border: 2px solid transparent; 
+}  
