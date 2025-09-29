@@ -26,8 +26,8 @@ def random_stock():
 
 #gets the stocks last close price
 def get_stock_price(ticker):
-    fucntion = "TIME_SERIES_DAILY"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "TIME_SERIES_DAILY"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     data = json.dumps(data, indent=4)
@@ -39,20 +39,10 @@ def get_stock_price(ticker):
         print("Error retrieving stock price for ticker:", ticker)
         return None
 
-    fucntion = "TIME_SERIES_DAILY"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey=JM50934LGM543DE7"
-    response = requests.get(url)
-    data = response.json()
-    try:
-        volume = data["Time Series (Daily)"]
-        return volume
-    except KeyError:
-        return None
-
 
 def get_company_name(ticker):
-    fucntion = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "OVERVIEW"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     try:
@@ -62,8 +52,8 @@ def get_company_name(ticker):
         return None
 
 def get_price_earnings_ratio(ticker):
-    fucntion = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "OVERVIEW"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     try:
@@ -73,8 +63,8 @@ def get_price_earnings_ratio(ticker):
         return None
 
 def get_market_cap(ticker):
-    fucntion = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "OVERVIEW"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     try:
@@ -84,8 +74,8 @@ def get_market_cap(ticker):
         return None
 
 def get_dividend_yield(ticker):
-    fucntion = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "OVERVIEW"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     try:
@@ -95,8 +85,8 @@ def get_dividend_yield(ticker):
         return None
 
 def get_52_week_high(ticker):
-    fucntion = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "OVERVIEW"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     try:
@@ -106,8 +96,8 @@ def get_52_week_high(ticker):
         return None
 
 def get_52_week_low(ticker):
-    fucntion = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "OVERVIEW"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     try:
@@ -117,8 +107,8 @@ def get_52_week_low(ticker):
         return None
 
 def get_overview(ticker):
-    fucntion = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={fucntion}&symbol={ticker}&apikey={API_KEY}"
+    function = "OVERVIEW"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     try:
