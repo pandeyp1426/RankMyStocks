@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify , request
 import csv
 import mysql.connector 
 import random
@@ -6,7 +6,6 @@ import urllib.request
 import json
 import os
 from flask_cors import CORS
-
 from dotenv import load_dotenv
 import urllib.parse
 from stocks import random_stock, get_company_name, get_stock_price
@@ -64,3 +63,76 @@ def db_test():
         return jsonify({"status": "error", "message": str(e)})
 if __name__ == "__main__":
     app.run(debug=True)
+    
+# ---- create portfolio ----
+@app.route("/api/portfolios", methods=["POST"])
+def create_portfolio():
+    data = request.get_json()
+    name = data.get("name")
+    stocks = data.get("stocks", [])   # [{ticker: 'AAPL', price: 123}, ...]
+
+    if not name or not stocks:
+        return jsonify({"error": "Missing name or stocks"}), 400
+
+    try:
+        conn = mysql.connector.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            user=os.getenv("DB_USER", "rankmystocks_user"),
+            password=os.getenv("DB_PASSWORD", "Stocks0_0!"),
+            database=os.getenv("DB_NAME", "Rankmystocks")
+        )
+        cursor = conn.cursor()
+
+        # Insert into portfolios table
+        cursor.execute("INSERT INTO portfolios (name) VALUES (%s)", (name,))
+        portfolio_id = cursor.lastrowid
+
+        # Insert related stocks
+        for s in stocks:
+            cursor.execute(
+                "INSERT INTO portfolio_stocks (portfolio_id, ticker, price) VALUES (%s,%s,%s)",
+                (portfolio_id, s["ticker"], s["price"])
+            )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"status": "success", "portfolio_id": portfolio_id})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ---- list portfolios ----
+@app.route("/api/portfolios", methods=["GET"])
+def list_portfolios():
+    try:
+        conn = mysql.connector.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            user=os.getenv("DB_USER", "rankmystocks_user"),
+            password=os.getenv("DB_PASSWORD", "Stocks0_0!"),
+            database=os.getenv("DB_NAME", "Rankmystocks")
+        )
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT p.id, p.name, ps.ticker, ps.price
+            FROM portfolios p
+            LEFT JOIN portfolio_stocks ps ON p.id = ps.portfolio_id
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        # Group by portfolio
+        portfolios = {}
+        for r in rows:
+            pid = r["id"]
+            portfolios.setdefault(pid, {"id": pid, "name": r["name"], "stocks": []})
+            if r["ticker"]:
+                portfolios[pid]["stocks"].append({
+                    "ticker": r["ticker"], "price": float(r["price"])
+                })
+
+        return jsonify(list(portfolios.values()))
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
