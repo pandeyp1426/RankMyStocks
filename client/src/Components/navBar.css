@@ -1,0 +1,22 @@
+.navBar {
+    display: flex;
+    justify-content: space-between;
+    color: white;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    
+    
+ }
+ .navBar button {
+    margin: 10px;
+    background-color: #1a1a1a;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+ }
+.navBarbutton:hover {
+    border: 2px white;
+}

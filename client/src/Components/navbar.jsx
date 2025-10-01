@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
-
+import './navBar.css'
 export function Navbar() {
     return (
-        <>
+        <div className="navBar">
             <Link to="/">
-                <button>Home</button>
+                <button className='navBarbutton'>Home</button>
             </Link>
 
             <Link to="/myPortfolios">
@@ -14,6 +14,6 @@ export function Navbar() {
             <Link to="/portfolioRankings">
                 <button>Portfolio Rankings</button>
             </Link>
-        </>
+        </div>
     )
 }
