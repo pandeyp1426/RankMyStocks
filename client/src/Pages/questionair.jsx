@@ -7,12 +7,14 @@ export function Questionair() {
   async function fetchStockOptions() {
     setLoading(true);
     try {
-      // call your backend twice to get two random stocks
-      const fetchOne = () => fetch("/random-stock").then(r => r.json());
+      // call backend twice to get two random stocks
+      const fetchOne = () =>
+        fetch("http://127.0.0.1:5000/api/random-stock").then((r) => r.json());
       const [s1, s2] = await Promise.all([fetchOne(), fetchOne()]);
+
       setOptions([
-        { ticker: Object.keys(s1["Time Series (Daily)"] || {})[0] || "?", raw: s1 },
-        { ticker: Object.keys(s2["Time Series (Daily)"] || {})[0] || "?", raw: s2 }
+        { ticker: s1.ticker, price: s1.price, name: s1.name },
+        { ticker: s2.ticker, price: s2.price, name: s2.name },
       ]);
     } catch (err) {
       console.error(err);
@@ -21,10 +23,29 @@ export function Questionair() {
     }
   }
 
-  // load when page mounts
   useEffect(() => {
     fetchStockOptions();
   }, []);
+
+  // Save portfolio to backend
+  const savePortfolio = (chosenStock) => {
+    const portfolioName = prompt("Enter a portfolio name:");
+    if (!portfolioName) return;
+
+    fetch("http://127.0.0.1:5000/api/portfolios", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: portfolioName,
+        stocks: [chosenStock],
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        alert("Portfolio created! ID: " + data.portfolio_id);
+      })
+      .catch((err) => console.error("Error creating portfolio:", err));
+  };
 
   return (
     <div className="text-center text-white p-6">
@@ -36,9 +57,9 @@ export function Questionair() {
           <button
             key={i}
             className="questionair-button bg-gray-800 px-8 py-4 rounded-lg hover:bg-gray-700"
-            onClick={() => alert(`You picked ${opt.ticker}`)}
+            onClick={() => savePortfolio(opt)}
           >
-            {opt.ticker || `Option ${i + 1}`}
+            {opt.name} ({opt.ticker}) – ${opt.price?.toFixed(2)}
           </button>
         ))}
       </div>

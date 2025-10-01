@@ -1,6 +1,6 @@
-from flask import Flask, jsonify , request
+from flask import Flask, jsonify, request
 import csv
-import mysql.connector 
+import mysql.connector
 import random
 import urllib.request
 import json
@@ -8,42 +8,30 @@ import os
 from flask_cors import CORS
 from dotenv import load_dotenv
 import urllib.parse
-from stocks import random_stock, get_company_name, get_stock_price
 
-load_dotenv() # Load environment variables from a .env file
-app = Flask(__name__)   
-
+load_dotenv()  # Load environment variables from a .env file
+app = Flask(__name__)
 CORS(app)
+
+# ---- random stock ----
 @app.route("/api/random-stock")
 def random_stock_api():
-    ticker = random_stock()
-    if not ticker:
-        return jsonify({"error": "No ticker found"}), 404
+    ticker = "AAPL"  # TODO: replace with your random_stock()
+    price = 175.32   # TODO: replace with get_stock_price(ticker)
+    name = "Apple Inc."  # TODO: replace with get_company_name(ticker)
 
-    price = get_stock_price(ticker)
-    name = get_company_name(ticker)
     return jsonify({
         "ticker": ticker,
         "name": name,
-        "price": float(price) if price else None
+        "price": price
     })
-@app.route("/")   
+
+# ---- home ----
+@app.route("/")
 def home():
     return "Welcome to RankMyStocks API!"
 
-@app.route("/api/random-stock")
-def get_random_stock():
-    function = "TIME_SERIES_DAILY"
-    stock = random_stock()
-
-    base = 'https://www.alphavantage.co/query'
-    params = {'function': function, 'symbol': stock, 'apikey': '1TOOAS77U9X4GJSC'}
-    url = base + '?' + urllib.parse.urlencode(params)
-
-    Website_link = urllib.request.urlopen(url)
-    wjson = Website_link.read()
-    wjdata = json.loads(wjson)
-    return jsonify(wjdata)   # Flask automatically returns JSON
+# ---- db test ----
 @app.route("/db-test")
 def db_test():
     try:
@@ -61,9 +49,7 @@ def db_test():
         return jsonify({"status": "success", "database": db_name})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
-if __name__ == "__main__":
-    app.run(debug=True)
-    
+
 # ---- create portfolio ----
 @app.route("/api/portfolios", methods=["POST"])
 def create_portfolio():
@@ -123,16 +109,25 @@ def list_portfolios():
         cursor.close()
         conn.close()
 
-        # Group by portfolio
+        # Group rows into portfolios
         portfolios = {}
         for r in rows:
             pid = r["id"]
-            portfolios.setdefault(pid, {"id": pid, "name": r["name"], "stocks": []})
+            portfolios.setdefault(pid, {
+                "id": pid,
+                "name": r["name"],
+                "stocks": []
+            })
             if r["ticker"]:
                 portfolios[pid]["stocks"].append({
-                    "ticker": r["ticker"], "price": float(r["price"])
+                    "ticker": r["ticker"],
+                    "price": float(r["price"])
                 })
 
         return jsonify(list(portfolios.values()))
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+# ---- entrypoint ----
+if __name__ == "__main__":
+    app.run(debug=True)
