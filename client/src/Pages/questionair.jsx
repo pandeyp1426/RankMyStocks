@@ -28,7 +28,6 @@ export function Questionair() {
     }
   };
 
-  // Only fetch once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
       fetchTwoStocks();
@@ -38,18 +37,11 @@ export function Questionair() {
 
   const handlePick = (stock) => {
     setSelectedStocks([...selectedStocks, stock]);
-    fetchTwoStocks(); // refresh stocks after selection
+    fetchTwoStocks();
   };
 
   const handleReroll = () => {
-    fetchTwoStocks(); // refresh stocks without picking
-  };
-
-  const formatButtonText = (stock) => {
-    if (!stock) return "";
-    // Show first 60 characters of description
-    const descSnippet = stock.description ? stock.description.substring(0, 60) + "..." : "";
-    return `${stock.name} (${stock.ticker}) - $${Number(stock.price).toFixed(2)}\n${descSnippet}`;
+    fetchTwoStocks();
   };
 
   return (
@@ -61,18 +53,30 @@ export function Questionair() {
           className="questionair-button"
           onClick={() => handlePick(stock1)}
           disabled={!stock1}
-          title={stock1?.description || ""}
         >
-          {formatButtonText(stock1)}
+          {stock1 && (
+            <>
+              <div className="stock-name">{stock1.name}</div>
+              <div className="stock-ticker">Ticker: {stock1.ticker}</div>
+              <div className="stock-price">Price: ${Number(stock1.price).toFixed(2)}</div>
+              <div className="stock-description">{stock1.description}</div>
+            </>
+          )}
         </button>
 
         <button
           className="questionair-button"
           onClick={() => handlePick(stock2)}
           disabled={!stock2}
-          title={stock2?.description || ""}
         >
-          {formatButtonText(stock2)}
+          {stock2 && (
+            <>
+              <div className="stock-name">{stock2.name}</div>
+              <div className="stock-ticker">Ticker: {stock2.ticker}</div>
+              <div className="stock-price">Price: ${Number(stock2.price).toFixed(2)}</div>
+              <div className="stock-description">{stock2.description}</div>
+            </>
+          )}
         </button>
       </div>
 
