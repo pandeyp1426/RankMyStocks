@@ -5,9 +5,11 @@
     align-items: center;
     margin: 0;
     padding: 0;
+    top: auto;
     
+}
     
- }
+ 
  .navBar button {
     margin: 10px;
     background-color: #1a1a1a;
@@ -16,7 +18,10 @@
     padding: 10px 20px;
     border-radius: 5px;
     cursor: pointer;
+    
  }
 .navBarbutton:hover {
-    border: 2px white;
+    border: 2px solid white;
+    
+    
 }
