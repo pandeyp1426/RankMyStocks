@@ -6,16 +6,21 @@
 }
 
 .questionair-button {
-  flex: 1;
-  margin: 0 10px;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  background-color: #52b788; 
-  color: white;
-  border: 2px solid transparent;
-  transition: border 0.2s ease;
-  outline: none; 
+    background-color: #52b788; 
+    color: white;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 20px;           
+    width: 300px;           
+    height: auto;             
+    font-size: 18px;          
+    line-height: 1.5;        
+    text-align: left;         
+    margin: 10px;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;  
+    justify-content: center; 
 }
 
 

@@ -45,6 +45,13 @@ export function Questionair() {
     fetchTwoStocks(); // refresh stocks without picking
   };
 
+  const formatButtonText = (stock) => {
+    if (!stock) return "";
+    // Show first 60 characters of description
+    const descSnippet = stock.description ? stock.description.substring(0, 60) + "..." : "";
+    return `${stock.name} (${stock.ticker}) - $${Number(stock.price).toFixed(2)}\n${descSnippet}`;
+  };
+
   return (
     <div>
       <h1>Pick A Stock</h1>
@@ -54,20 +61,18 @@ export function Questionair() {
           className="questionair-button"
           onClick={() => handlePick(stock1)}
           disabled={!stock1}
+          title={stock1?.description || ""}
         >
-          {stock1
-            ? `${stock1.name} (${stock1.ticker}) - $${Number(stock1.price).toFixed(2)}`
-            : ""}
+          {formatButtonText(stock1)}
         </button>
 
         <button
           className="questionair-button"
           onClick={() => handlePick(stock2)}
           disabled={!stock2}
+          title={stock2?.description || ""}
         >
-          {stock2
-            ? `${stock2.name} (${stock2.ticker}) - $${Number(stock2.price).toFixed(2)}`
-            : ""}
+          {formatButtonText(stock2)}
         </button>
       </div>
 
