@@ -6,17 +6,30 @@
 }
 
 .questionair-button {
-  flex: 1;
-  margin: 0 10px;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  background-color: #52b788; 
-  color: white;
-  border: 2px solid transparent;
-  transition: border 0.2s ease;
-  outline: none; 
+    background-color: #52b788; 
+    color: white;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 20px 20px;          /* top-bottom | left-right */
+    width: 300px;           
+    height: auto;             
+    font-size: 18px;          
+    line-height: 1.5;        
+    text-align: left;           /* left-align text */
+    margin: 10px;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;  
+    justify-content: flex-start; /* make content start at the top */
+    align-items: flex-start;     /* align all inner items to left */
+    box-sizing: border-box;      /* include padding in width */
 }
+
+.questionair-button div {
+    white-space: normal;       /* allow text to wrap */
+    word-wrap: break-word;     /* break long words if needed */
+}
+
 
 
 .questionair-button:hover {

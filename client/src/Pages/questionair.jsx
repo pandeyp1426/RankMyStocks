@@ -28,7 +28,6 @@ export function Questionair() {
     }
   };
 
-  // Only fetch once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
       fetchTwoStocks();
@@ -38,11 +37,11 @@ export function Questionair() {
 
   const handlePick = (stock) => {
     setSelectedStocks([...selectedStocks, stock]);
-    fetchTwoStocks(); // refresh stocks after selection
+    fetchTwoStocks();
   };
 
   const handleReroll = () => {
-    fetchTwoStocks(); // refresh stocks without picking
+    fetchTwoStocks();
   };
 
   return (
@@ -55,9 +54,14 @@ export function Questionair() {
           onClick={() => handlePick(stock1)}
           disabled={!stock1}
         >
-          {stock1
-            ? `${stock1.name} (${stock1.ticker}) - $${Number(stock1.price).toFixed(2)}`
-            : ""}
+          {stock1 && (
+            <>
+              <div className="stock-name">{stock1.name}</div>
+              <div className="stock-ticker">Ticker: {stock1.ticker}</div>
+              <div className="stock-price">Price: ${Number(stock1.price).toFixed(2)}</div>
+              <div className="stock-description">{stock1.description}</div>
+            </>
+          )}
         </button>
 
         <button
@@ -65,9 +69,14 @@ export function Questionair() {
           onClick={() => handlePick(stock2)}
           disabled={!stock2}
         >
-          {stock2
-            ? `${stock2.name} (${stock2.ticker}) - $${Number(stock2.price).toFixed(2)}`
-            : ""}
+          {stock2 && (
+            <>
+              <div className="stock-name">{stock2.name}</div>
+              <div className="stock-ticker">Ticker: {stock2.ticker}</div>
+              <div className="stock-price">Price: ${Number(stock2.price).toFixed(2)}</div>
+              <div className="stock-description">{stock2.description}</div>
+            </>
+          )}
         </button>
       </div>
 
