@@ -7,17 +7,20 @@ export function Questionair() {
   const [selectedStocks, setSelectedStocks] = useState([]);
   const didFetchRef = useRef(false);
 
+   // 👇 API URL comes from .env (client/.env)
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+  
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {
       let data1, data2;
 
       do {
-        data1 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
+        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
       } while (!data1 || !data1.ticker || !data1.price);
 
       do {
-        data2 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
+        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
       } while (!data2 || !data2.ticker || !data2.price || data2.ticker === data1.ticker);
 
       setStock1(data1);
@@ -52,7 +55,7 @@ export function Questionair() {
     const portfolioName = prompt("Enter a portfolio name:");
     if (!portfolioName) return;
 
-    fetch("http://127.0.0.1:5000/api/portfolios", {
+    fetch(`${API_URL}/api/portfolios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -5,8 +5,11 @@ export function MyPortfolios() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+   // 👇 API URL comes from .env
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+
   useEffect(() => {
-    fetch("http://127.0.0.1:5000/api/portfolios")
+    fetch(`${API_URL}/api/portfolios`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch portfolios");
         return res.json();
@@ -19,7 +22,7 @@ export function MyPortfolios() {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [API_URL]);
 
   if (loading) return <p>Loading portfolios...</p>;
   if (error) return <p className="text-red-500">Error: {error}</p>;
