@@ -130,4 +130,9 @@ def list_portfolios():
 
 # ---- entrypoint ----
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        debug=True,
+        host=os.getenv("FLASK_RUN_HOST", "127.0.0.1"),
+        port=int(os.getenv("FLASK_RUN_PORT", 5000))
+    )
+
