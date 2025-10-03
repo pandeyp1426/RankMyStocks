@@ -8,11 +8,11 @@ export function Navbar() {
             </Link>
 
             <Link to="/myPortfolios">
-                <button>My Portfolios</button>
+                <button  className='navBarbutton'>My Portfolios</button>
             </Link>
 
             <Link to="/portfolioRankings">
-                <button>Portfolio Rankings</button>
+                <button  className='navBarbutton'>Portfolio Rankings</button>
             </Link>
         </div>
     )
