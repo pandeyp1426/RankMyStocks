@@ -5,13 +5,9 @@ import requests
 import queue
 from datetime import datetime, timedelta
 
-currentDate = datetime.now()
-previousDate = currentDate - timedelta(days=1)
-dateString = previousDate.strftime("%Y-%m-%d")
-
 #premium API Key 75 calls perminute
 API_KEY = "YN7QP69QPEBTJVKO"
-    
+
 
 #generates random list of tickers based on given size
 def generate_ticker_list(size):
@@ -33,6 +29,17 @@ def random_stock():
 
 #gets the stocks last close price
 def get_stock_price(ticker):
+    currentDate = datetime.now()
+    previousDate = currentDate - timedelta(days=1)
+    day_int = previousDate.weekday()
+    if day_int == 5:
+        currentDate = currentDate - timedelta(days=1)
+    if day_int == 6:
+        currentDate = currentDate - timedelta(days=2)
+    print(day_int)
+    dateString = previousDate.strftime("%Y-%m-%d")
+
+    
     function = "TIME_SERIES_DAILY"
     url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
@@ -135,3 +142,7 @@ def get_description(ticker):
         print("Error getting descrioption")
         return None
 
+
+
+stock = get_stock_price("INTC")
+print(stock)

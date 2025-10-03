@@ -25,6 +25,12 @@ h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
+h3 {
+  font-size: 1.5em;
+  line-height: 1.1;
+  font-weight: bold;
+  margin-bottom: 1.1em;
+}
 
 button {
   border-radius: 15px;
@@ -62,4 +68,10 @@ button:focus-visible {
   button {
     background-color: #272626;
   }
+}
+.popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
