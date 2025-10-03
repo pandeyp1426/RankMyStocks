@@ -1,7 +1,12 @@
+import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
 import "./Questionair.css";
 
 export function Questionair() {
+  //Fetching values from store and assigning them for use
+  const portfolioName = useSelector((state) => state.portfolio.portfolioName);
+  const questionQTY = useSelector((state) => state.questionQTY.value);
+  
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
   const [selectedStocks, setSelectedStocks] = useState([]);
@@ -46,7 +51,11 @@ export function Questionair() {
 
   return (
     <div>
+      <p>
+      <h1>{ portfolioName }</h1>
+      <h1> { questionQTY }  Total Questions </h1>
       <h1>Pick A Stock</h1>
+      </p>
 
       <div className="button-container">
         <button
