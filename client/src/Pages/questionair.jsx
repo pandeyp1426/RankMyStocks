@@ -12,20 +12,25 @@ export function Questionair() {
   const [selectedStocks, setSelectedStocks] = useState([]);
   const didFetchRef = useRef(false);
 
+   // 👇 API URL comes from .env (client/.env)
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+  
+  // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {
       let data1, data2;
 
-      // Fetch first stock
       do {
-        data1 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
+        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
       } while (!data1 || !data1.ticker || !data1.price);
 
-      // Fetch second stock, different from the first
       do {
-        data2 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
+        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
       } while (!data2 || !data2.ticker || !data2.price || data2.ticker === data1.ticker);
 
+      console.log("Fetched stock1:", data1);
+      console.log("Fetched stock2:", data2);
+      
       setStock1(data1);
       setStock2(data2);
     } catch (err) {
@@ -33,20 +38,45 @@ export function Questionair() {
     }
   };
 
+  // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
       fetchTwoStocks();
       didFetchRef.current = true;
     }
-  }, []);
+  }, [API_URL]);
 
+  // when user picks a stock
   const handlePick = (stock) => {
     setSelectedStocks([...selectedStocks, stock]);
+    savePortfolio(stock); // save to backend
+    fetchTwoStocks(); // refresh new options
     fetchTwoStocks();
   };
 
+  // reroll without picking
   const handleReroll = () => {
     fetchTwoStocks();
+  };
+
+  // save to backend
+  const savePortfolio = (chosenStock) => {
+    const portfolioName = prompt("Enter a portfolio name:");
+    if (!portfolioName) return;
+
+    fetch(`${API_URL}/api/portfolios`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: portfolioName,
+        stocks: [chosenStock],
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        alert("Portfolio saved! ID: " + data.portfolio_id);
+      })
+      .catch((err) => console.error("Error saving portfolio:", err));
   };
 
   return (

@@ -25,6 +25,11 @@ dist-ssr
 node_modules
 server/.env
 *.env
-# Python
+# Ignore Python cache files
 __pycache__/
 *.py[cod]
+*.pyo
+*.__pycache__
+*.pyc
+
+
