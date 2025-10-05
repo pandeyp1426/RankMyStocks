@@ -23,6 +23,9 @@ export function Questionair() {
         data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
       } while (!data2 || !data2.ticker || !data2.price || data2.ticker === data1.ticker);
 
+      console.log("Fetched stock1:", data1);
+      console.log("Fetched stock2:", data2);
+      
       setStock1(data1);
       setStock2(data2);
     } catch (err) {
@@ -36,7 +39,7 @@ export function Questionair() {
       fetchTwoStocks();
       didFetchRef.current = true;
     }
-  }, []);
+  }, [API_URL]);
 
   // when user picks a stock
   const handlePick = (stock) => {

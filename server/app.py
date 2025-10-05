@@ -12,19 +12,25 @@ import urllib.parse
 load_dotenv()  # Load environment variables from a .env file
 app = Flask(__name__)
 CORS(app)
-
+from stocks import random_stock, get_stock_price, get_company_name
 # ---- random stock ----
 @app.route("/api/random-stock")
 def random_stock_api():
-    ticker = "AAPL"  # TODO: replace with your random_stock()
-    price = 175.32   # TODO: replace with get_stock_price(ticker)
-    name = "Apple Inc."  # TODO: replace with get_company_name(ticker)
+    try:
+        ticker = random_stock()
+        if not ticker:
+            return jsonify({"error": "No random stock found"}), 500
 
-    return jsonify({
-        "ticker": ticker,
-        "name": name,
-        "price": price
-    })
+        name = get_company_name(ticker) or ticker
+        price = get_stock_price(ticker) or 0.0
+
+        return jsonify({
+            "ticker": ticker,
+            "name": name,
+            "price": float(price)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ---- home ----
 @app.route("/")
@@ -132,7 +138,7 @@ def list_portfolios():
 if __name__ == "__main__":
     app.run(
         debug=True,
-        host=os.getenv("FLASK_RUN_HOST", "127.0.0.1"),
-        port=int(os.getenv("FLASK_RUN_PORT", 5000))
+        host="127.0.0.1",
+        port=5001
     )
 
