@@ -1,22 +1,30 @@
-import { Link } from "react-router-dom"
+import { Link } from "react-router-dom";
+import { useState } from "react";
+import { useSelector } from 'react-redux';
+import { Popup } from "../Components/popup.jsx"
+import { NumSlider } from "../Components/numSlider.jsx";
+import { PortfolioName } from "../Components/portfolioName.jsx";
 
 
 export function Home() {
-    
+  const [buttonPopup, setButtonPopup] = useState(false);
+  function nameCheck(){
+  };
     return (
-        <>
-        <div class = 'header'>
-            <h1 className='text-grey-500'>RankMyStocks</h1>
-            <p className="text">Invest Smarter</p>
-            {/* Needs a pop up window after and a function for how the questionair works */}
-            <Link to="/questionair">
-                <button>Create Portfolio</button>
-            </Link>
-        </div>
-      
-      
-    
-    
-        </>
+    <>
+      <div className="header">
+        <h1 className="text-grey-500">RankMyStocks</h1>
+        <p className="text">Invest Smarter</p>
+        <button onClick={() => setButtonPopup(true)}>Create Portfolio</button>
+        <Popup trigger={buttonPopup} setTrigger={setButtonPopup}>
+          <h3>Enter Portfolio Name</h3>
+          <PortfolioName />
+          <NumSlider />
+          <Link to="/questionair">
+            <button onClick={nameCheck} className="save-btn">Save</button>
+          </Link>
+        </Popup>
+      </div>
+    </>
     )
 }

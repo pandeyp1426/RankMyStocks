@@ -1,7 +1,12 @@
+import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
 import "./Questionair.css";
 
 export function Questionair() {
+  //Fetching values from store and assigning them for use
+  const portfolioName = useSelector((state) => state.portfolio.portfolioName);
+  const questionQTY = useSelector((state) => state.questionQTY.value);
+  
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
   const [selectedStocks, setSelectedStocks] = useState([]);
@@ -46,6 +51,7 @@ export function Questionair() {
     setSelectedStocks([...selectedStocks, stock]);
     savePortfolio(stock); // save to backend
     fetchTwoStocks(); // refresh new options
+    fetchTwoStocks();
   };
 
   // reroll without picking
@@ -75,7 +81,11 @@ export function Questionair() {
 
   return (
     <div>
+      <p>
+      <h1>{ portfolioName }</h1>
+      <h1> { questionQTY }  Total Questions </h1>
       <h1>Pick A Stock</h1>
+      </p>
 
       <div className="button-container">
         <button
@@ -83,9 +93,14 @@ export function Questionair() {
           onClick={() => handlePick(stock1)}
           disabled={!stock1}
         >
-          {stock1
-            ? `${stock1.name} (${stock1.ticker}) - $${Number(stock1.price).toFixed(2)}`
-            : ""}
+          {stock1 && (
+            <>
+              <div className="stock-name">{stock1.name}</div>
+              <div className="stock-ticker">Ticker: {stock1.ticker}</div>
+              <div className="stock-price">Price: ${Number(stock1.price).toFixed(2)}</div>
+              <div className="stock-description">{stock1.description}</div>
+            </>
+          )}
         </button>
 
         <button
@@ -93,9 +108,14 @@ export function Questionair() {
           onClick={() => handlePick(stock2)}
           disabled={!stock2}
         >
-          {stock2
-            ? `${stock2.name} (${stock2.ticker}) - $${Number(stock2.price).toFixed(2)}`
-            : ""}
+          {stock2 && (
+            <>
+              <div className="stock-name">{stock2.name}</div>
+              <div className="stock-ticker">Ticker: {stock2.ticker}</div>
+              <div className="stock-price">Price: ${Number(stock2.price).toFixed(2)}</div>
+              <div className="stock-description">{stock2.description}</div>
+            </>
+          )}
         </button>
       </div>
 

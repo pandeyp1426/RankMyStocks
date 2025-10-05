@@ -12,7 +12,7 @@ import urllib.parse
 load_dotenv()  # Load environment variables from a .env file
 app = Flask(__name__)
 CORS(app)
-from stocks import random_stock, get_stock_price, get_company_name
+from stocks import random_stock, get_stock_price, get_company_name, get_description
 # ---- random stock ----
 @app.route("/api/random-stock")
 def random_stock_api():
@@ -21,26 +21,26 @@ def random_stock_api():
         if not ticker:
             return jsonify({"error": "No random stock found"}), 500
 
-        name = get_company_name(ticker) or ticker
-        price = get_stock_price(ticker) or 0.0
-
+        price = get_stock_price(ticker)
+        name = get_company_name(ticker)
+        description = get_description(ticker)
         return jsonify({
             "ticker": ticker,
             "name": name,
-            "price": float(price)
+            "price": float(price) if price else None,
+            "description": description
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ---- home ----
-@app.route("/")
+@app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
 
-# ---- db test ----
 @app.route("/db-test")
 def db_test():
     try:
+        import mysql.connector
         conn = mysql.connector.connect(
             host=os.getenv("DB_HOST", "localhost"),
             user=os.getenv("DB_USER", "rankmystocks_user"),

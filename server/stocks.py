@@ -2,16 +2,12 @@ import csv
 import json
 import random
 import requests
+import queue
 from datetime import datetime, timedelta
-
-currentDate = datetime.now()
-previousDate = currentDate - timedelta(days=4)
-dateString = previousDate.strftime("%Y-%m-%d")
-
-print(dateString)
 
 #premium API Key 75 calls perminute
 API_KEY = "YN7QP69QPEBTJVKO"
+
 
 #generates random list of tickers based on given size
 def generate_ticker_list(size):
@@ -33,6 +29,17 @@ def random_stock():
 
 #gets the stocks last close price
 def get_stock_price(ticker):
+    currentDate = datetime.now()
+    previousDate = currentDate - timedelta(days=1)
+    day_int = previousDate.weekday()
+    if day_int == 5:
+        currentDate = currentDate - timedelta(days=1)
+    if day_int == 6:
+        currentDate = currentDate - timedelta(days=2)
+    print(day_int)
+    dateString = previousDate.strftime("%Y-%m-%d")
+
+    
     function = "TIME_SERIES_DAILY"
     url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
@@ -118,10 +125,23 @@ def get_overview(ticker):
     url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
+    data = json.dumps(data, indent=4)
     try:
         return data
     except KeyError:
         return None
+
+def get_description(ticker):
+    description = get_overview(ticker)
+    
+    try:
+        description = json.loads(description)
+        description = description["Description"]
+        return description
+    except KeyError:
+        print("Error getting descrioption")
+        return None
+
 
 
 stock = get_stock_price("INTC")
