@@ -56,7 +56,6 @@ def db_test():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
-# ---- create portfolio ----
 @app.route("/api/portfolios", methods=["POST"])
 def create_portfolio():
     data = request.get_json()
@@ -75,23 +74,32 @@ def create_portfolio():
         )
         cursor = conn.cursor()
 
-        # Insert into portfolios table
-        cursor.execute("INSERT INTO portfolios (name) VALUES (%s)", (name,))
-        portfolio_id = cursor.lastrowid
+        # 🔹 Reuse portfolio if name already exists
+        cursor.execute("SELECT id FROM portfolios WHERE name = %s", (name,))
+        existing = cursor.fetchone()
 
-        # Insert related stocks
+        if existing:
+            portfolio_id = existing[0]
+        else:
+            cursor.execute("INSERT INTO portfolios (name) VALUES (%s)", (name,))
+            portfolio_id = cursor.lastrowid
+
+        # 🔹 Insert stocks (default price = 0 if missing)
         for s in stocks:
+            price_value = s.get("price") or 0.0
             cursor.execute(
-                "INSERT INTO portfolio_stocks (portfolio_id, ticker, price) VALUES (%s,%s,%s)",
-                (portfolio_id, s["ticker"], s["price"])
+                "INSERT INTO portfolio_stocks (portfolio_id, ticker, price) VALUES (%s, %s, %s)",
+                (portfolio_id, s.get("ticker"), price_value)
             )
 
         conn.commit()
         cursor.close()
         conn.close()
         return jsonify({"status": "success", "portfolio_id": portfolio_id})
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 # ---- list portfolios ----
@@ -125,9 +133,16 @@ def list_portfolios():
                 "stocks": []
             })
             if r["ticker"]:
+                price_value = 0.0
+                try:
+                    if r["price"] not in (None, "", "None"):
+                        price_value = float(r["price"])
+                except (TypeError, ValueError):
+                    price_value = 0.0
+
                 portfolios[pid]["stocks"].append({
                     "ticker": r["ticker"],
-                    "price": float(r["price"])
+                    "price": price_value
                 })
 
         return jsonify(list(portfolios.values()))
