@@ -119,7 +119,7 @@ export function Questionair() {
             <>
               <div className="stock-name">{stock2.name}</div>
               <div className="stock-ticker">Ticker: {stock2.ticker}</div>
-              <div className="stock-price">Price: {stock1.price ? `$${Number(stock1.price).toFixed(2)}` : "N/A"}</div>
+              <div className="stock-price">Price: {stock2.price ? `$${Number(stock2.price).toFixed(2)}` : "N/A"}</div>
               <div className="stock-description">{stock2.description}</div>
             </>
           )}
