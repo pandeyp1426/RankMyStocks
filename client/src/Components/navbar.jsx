@@ -13,7 +13,7 @@ export function Navbar() {
 
             <Link to="/portfolioRankings">
                 <button>Portfolio Rankings</button>
-            </Link>
+            </Link>     
         </>
     )
 }

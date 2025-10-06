@@ -2,7 +2,7 @@ import csv
 import random
 import os
 from langchain_openai import ChatOpenAI
-from langchain.chains import OpenAIModerationChain
+# from langchain.chains import OpenAIModerationChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import OpenAI
 from dotenv import load_dotenv

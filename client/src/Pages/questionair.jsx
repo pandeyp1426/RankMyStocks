@@ -12,20 +12,27 @@ export function Questionair() {
   const [selectedStocks, setSelectedStocks] = useState([]);
   const didFetchRef = useRef(false);
 
+   // 👇 API URL comes from .env (client/.env)
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+  
+  // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {
       let data1, data2;
 
-      // Fetch first stock
       do {
-        data1 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
-      } while (!data1 || !data1.ticker || !data1.price);
+        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
+      } while (!data1 || !data1.ticker || data1.ticker === "Symbol");
 
-      // Fetch second stock, different from the first
+
       do {
-        data2 = await (await fetch("http://127.0.0.1:5000/api/random-stock")).json();
-      } while (!data2 || !data2.ticker || !data2.price || data2.ticker === data1.ticker);
+        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
+      } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
 
+
+      console.log("Fetched stock1:", data1);
+      console.log("Fetched stock2:", data2);
+      
       setStock1(data1);
       setStock2(data2);
     } catch (err) {
@@ -33,20 +40,50 @@ export function Questionair() {
     }
   };
 
+  // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
       fetchTwoStocks();
       didFetchRef.current = true;
     }
-  }, []);
+  }, [API_URL]);
 
+  // when user picks a stock
   const handlePick = (stock) => {
     setSelectedStocks([...selectedStocks, stock]);
+    savePortfolio(stock); // save to backend
+    fetchTwoStocks(); // refresh new options
     fetchTwoStocks();
   };
 
+  // reroll without picking
   const handleReroll = () => {
     fetchTwoStocks();
+  };
+
+  // Save portfolio to backend
+  const savePortfolio = (chosenStock) => {
+    const name = portfolioName || "Untitled Portfolio";
+
+    fetch(`${API_URL}/api/portfolios`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        stocks: [
+          {
+            ...chosenStock,
+            price: chosenStock.price || 0,
+          },
+        ],
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Portfolio saved:", data);
+        alert(`Saved ${chosenStock.ticker} to portfolio: ${name}`);
+      })
+      .catch((err) => console.error("Error saving portfolio:", err));
   };
 
   return (
@@ -82,7 +119,7 @@ export function Questionair() {
             <>
               <div className="stock-name">{stock2.name}</div>
               <div className="stock-ticker">Ticker: {stock2.ticker}</div>
-              <div className="stock-price">Price: ${Number(stock2.price).toFixed(2)}</div>
+              <div className="stock-price">Price: {stock1.price ? `$${Number(stock1.price).toFixed(2)}` : "N/A"}</div>
               <div className="stock-description">{stock2.description}</div>
             </>
           )}
