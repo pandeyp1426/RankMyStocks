@@ -37,6 +37,7 @@ def random_stock_api():
 def home():
     return "Welcome to RankMyStocks API!"
 
+\
 @app.route("/db-test")
 def db_test():
     try:
@@ -55,6 +56,7 @@ def db_test():
         return jsonify({"status": "success", "database": db_name})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
 
 @app.route("/api/portfolios", methods=["POST"])
 def create_portfolio():
@@ -99,7 +101,6 @@ def create_portfolio():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
 
 
 # ---- list portfolios ----
@@ -148,6 +149,8 @@ def list_portfolios():
         return jsonify(list(portfolios.values()))
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
 
 # ---- entrypoint ----
 if __name__ == "__main__":

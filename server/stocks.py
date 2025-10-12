@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 #premium API Key 75 calls perminute
 API_KEY = "YN7QP69QPEBTJVKO"
 
+def test_function():
+    return "This is a test function"
 
 #generates random list of tickers based on given size
 def generate_ticker_list(size):
