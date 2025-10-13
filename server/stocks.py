@@ -160,15 +160,30 @@ def queue_to_list(stock_queue):
 def pick_stocks(num_stocks):
     stock_list = generate_ticker_list(num_stocks)
     stock_queue = list_to_queue(stock_list)
+    winners = []
 
-    print(stock_queue)
-    stock1 = stock_queue.popleft()
-    stock2 = stock_queue.popleft()
-    print("Stock 1:", stock1)
-    print("Stock 2:", stock2)
+    while is_empty(stock_queue) == False:
+        stock1 = stock_queue.popleft()
+        stock2 = stock_queue.popleft()
+        print("Comparing stocks:")
+        print("Stock 1:", stock1)
+        print("Stock 2:", stock2)
+
+        choice = input("Which stock do you prefer? (1 or 2): ")
+        if choice == '1':
+            winners.append(stock1)
+        elif choice == '2':
+            winners.append(stock2)
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+            stock_queue.appendleft(stock2)
+            stock_queue.appendleft(stock1)
     
-    print(stock_queue)
+    return winners
+    
 
 
 
-pick_stocks(10)
+
+stock_winners = pick_stocks(10)
+print(stock_winners)
