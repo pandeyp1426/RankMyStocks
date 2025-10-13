@@ -1,95 +1,118 @@
 :root {
-  --bg-color: #52b788ff;
-  --text-color: #ffffff;
-  --ticker-color: #ffd700;
-  --name-color: #ffffff;
-  --price-color: #00ffff;
-  --desc-color: #e0e0e0;
-  --border-color: transparent;
-  --hover-border-color: #ffffff;
+  --bg-gradient: linear-gradient(135deg, #6a5af9, #8360c3);
+  --card-bg: #ffffff;
+  --text-dark: #222222;
+  --text-light: #666666;
+  --positive: #28a745;
+  --negative: #dc3545;
+  --shadow: rgba(0, 0, 0, 0.1);
 }
 
+body {
+  background: var(--bg-gradient);
+  font-family: "Inter", "Poppins", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-dark);
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+}
+
+h1, h2, h3 {
+  text-align: center;
+  color: white;
+  margin-bottom: 15px;
+}
+
+/* Container for buttons */
 .button-container {
-  display: flex;             
-  justify-content: space-between; 
-  width: 100%;                 
-  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* top-align buttons */
+  flex-wrap: wrap;
+  gap: 40px;
+  margin: 30px 0;
 }
 
+/* Stock card buttons */
 .questionair-button {
-    background-color: #52b788; 
-    color: white;
-    border: 2px solid transparent;
-    border-radius: 12px;
-    padding: 20px;          
-    width: 300px;           
-    height: auto;             
-    font-size: 16px;          
-    line-height: 1.4;        
-    text-align: left;
-    margin: 10px;
-    transition: all 0.2s ease-in-out;
-    display: flex;
-    flex-direction: column;  
-    justify-content: flex-start;
-    align-items: flex-start;
-    box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start; /* content aligned like old CSS */
+  background: var(--card-bg);
+  color: var(--text-dark);
+  border: none;
+  border-radius: 20px;
+  padding: 30px 20px;
+  width: 300px; /* fixed width like old CSS */
+  height: auto; /* lets height grow naturally */
+  box-shadow: 0 8px 20px var(--shadow);
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-sizing: border-box;
+  text-align: left; /* ensures text aligns left */
 }
 
-.questionair-button div {
-    white-space: normal;
-    word-wrap: break-word;
+.questionair-button:hover {
+  transform: translateY(-5px);
+  transform: scale(1.02);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
-/* Distinct styling for each element inside the button */
+/* Inner content */
 .stock-ticker {
-    font-weight: 700;         
-    font-size: 20px;         
-    color: #ffd700;          
-    margin-bottom: 5px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 5px;
 }
 
 .stock-name {
-    font-weight: 600;         
-    font-size: 18px;
-    color: #ffffff;
-    margin-bottom: 3px;
+  font-size: 18px;
+  color: var(--text-light);
+  margin-bottom: 10px;
 }
 
 .stock-price {
-    font-weight: 500;
-    font-size: 16px;
-    color: #00ffff;           
-    margin-bottom: 5px;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--positive);
+  margin-bottom: 10px;
 }
 
 .stock-description {
-    font-weight: 400;
-    font-size: 14px;
-    color: #e0e0e0;          
+  font-size: 14px;
+  color: var(--text-light);
+  line-height: 1.5;
+  word-wrap: break-word;
 }
 
-/* Button interactions */
-.questionair-button:hover {
-    border: 2px solid white;
+/* VS text */
+.vs-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  margin: 0 20px;
 }
 
-.questionair-button:focus {
-    outline: none;
-}
-
-.questionair-button:active {
-    border: 2px solid transparent; 
+/* Reroll button */
+.reroll-button {
+  background: white;
+  color: var(--text-dark);
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 10px var(--shadow);
 }
 
 .reroll-button:hover {
-    border: 2px solid white;
+  background: #f5f5f5;
+  transform: scale(1.03);
 }
-
-.reroll-button:focus {
-    outline: none;
-} 
-
-.reroll-button:active {
-    border: 2px solid transparent; 
-} 

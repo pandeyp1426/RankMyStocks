@@ -102,9 +102,9 @@ export function Questionair() {
         >
           {stock1 && (
             <>
+              <div className="stock-ticker">{stock1.ticker}</div>
               <div className="stock-name">{stock1.name}</div>
-              <div className="stock-ticker">Ticker: {stock1.ticker}</div>
-              <div className="stock-price">Price: ${Number(stock1.price).toFixed(2)}</div>
+              <div className="stock-price">${Number(stock1.price).toFixed(2)}</div>
               <div className="stock-description">{stock1.description}</div>
             </>
           )}
@@ -117,9 +117,9 @@ export function Questionair() {
         >
           {stock2 && (
             <>
+              <div className="stock-ticker">{stock2.ticker}</div>
               <div className="stock-name">{stock2.name}</div>
-              <div className="stock-ticker">Ticker: {stock2.ticker}</div>
-              <div className="stock-price">Price: {stock2.price ? `$${Number(stock2.price).toFixed(2)}` : "N/A"}</div>
+              <div className="stock-price">{stock2.price ? `$${Number(stock2.price).toFixed(2)}` : "N/A"}</div>
               <div className="stock-description">{stock2.description}</div>
             </>
           )}

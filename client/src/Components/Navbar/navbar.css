@@ -1,0 +1,35 @@
+.top-nav {
+  position: fixed;       
+  top: 20px;             
+  left: 20px;           
+  display: flex;
+  gap: 20px;             
+  z-index: 1000;         
+}
+.top-nav a {
+  color: white;          
+  text-decoration: none; 
+  font-weight: 600;
+  font-size: 16px;
+  transition: color 0.2s ease;
+}
+
+.top-nav a:hover {
+  color: #ffd700;       
+}
+
+.top-nav button {
+  background-color: white; 
+  color: black;            
+  border: none;            
+  border-radius: 8px;      
+  padding: 8px 16px;       
+  cursor: pointer;
+  font-weight: 600;
+ 
+}
+
+.top-nav button:hover {
+ 
+  transform: scale(1.05);
+}
