@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useSelector } from 'react-redux';
-import { Popup } from "../Components/popup.jsx"
-import { NumSlider } from "../Components/numSlider.jsx";
-import { PortfolioName } from "../Components/portfolioName.jsx";
+import { Popup } from "../Components/CreatePopUp/popup.jsx"
+import { NumSlider } from "../Components/CreatePopUp/numSlider.jsx";
+import { PortfolioName } from "../Components/CreatePopUp/portfolioName.jsx";
 
 
 export function Home() {
