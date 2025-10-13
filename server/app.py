@@ -37,7 +37,31 @@ def random_stock_api():
 def home():
     return "Welcome to RankMyStocks API!"
 
-\
+
+@app.route("/questionaire") #this route will be the initial setup for the queue
+def questionaire():
+    #gets users input for how many stocks they want to rank
+    #create initial list of stocks
+    #get target size of list
+    #store both queueu and winners list in session
+    return "Questionaire!"
+
+@app.route("/pick") #this route will pick the stocks from the queue
+def pick():
+    #load stocks from the queue
+    #check if queue is empty
+    #if not empty, pop the first 2 stocks in the queue
+    #add winner to winners list
+    #repeat until queue is empty
+    return "Pick a stock!"
+
+@app.route("/submit") #this route will submit the final ranked list
+def submit():
+    #load winners list from session
+    #store winners list in database
+    return "Submit your ranked list!"
+
+
 @app.route("/db-test")
 def db_test():
     try:

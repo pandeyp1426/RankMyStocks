@@ -18,6 +18,8 @@ def generate_ticker_list(size):
         tickers.append(random_stock())
     return tickers
 
+
+
 #gets random ticker form a list of tickers
 def random_stock():
     with open("ticker_list.csv", mode='r') as file:
@@ -144,7 +146,29 @@ def get_description(ticker):
         print("Error getting descrioption")
         return None
 
+def is_empty(Queue):
+    return len(Queue) == 0
+
+def list_to_queue(stock_list):
+    stock_queue = queue.deque(stock_list)
+    return stock_queue
+
+def queue_to_list(stock_queue):
+    stock_list = list(stock_queue)
+    return stock_list
+
+def pick_stocks(num_stocks):
+    stock_list = generate_ticker_list(num_stocks)
+    stock_queue = list_to_queue(stock_list)
+
+    print(stock_queue)
+    stock1 = stock_queue.popleft()
+    stock2 = stock_queue.popleft()
+    print("Stock 1:", stock1)
+    print("Stock 2:", stock2)
+    
+    print(stock_queue)
 
 
-stock = get_stock_price("INTC")
-print(stock)
+
+pick_stocks(10)
