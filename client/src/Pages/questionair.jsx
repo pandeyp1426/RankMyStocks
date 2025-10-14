@@ -15,6 +15,31 @@ export function Questionair() {
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
   
+  
+  const sendQuestionaire = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/questionaire`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', // Tell the server we are sending JSON
+        },
+        body: JSON.stringify({ questionQTY: questionQTY }), // Convert the JS object to a JSON string
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json(); // Parse the JSON response from py
+      setResponseMessage(data.message); // Update the message with the server's response
+
+    } catch (error) {
+      console.error("Error sending number:", error);
+      setResponseMessage("Failed to send number to the server.");
+    }
+  };
+
+
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {

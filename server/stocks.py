@@ -185,5 +185,5 @@ def pick_stocks(num_stocks):
 
 
 
-stock_winners = pick_stocks(10)
-print(stock_winners)
+#stock_winners = pick_stocks(10)
+#print(stock_winners)

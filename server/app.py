@@ -12,8 +12,8 @@ import urllib.parse
 load_dotenv()  # Load environment variables from a .env file
 app = Flask(__name__)
 CORS(app)
-from stocks import random_stock, get_stock_price, get_company_name, get_description
-# ---- random stock ----
+import stocks # ---- random stock ----
+
 @app.route("/api/random-stock")
 def random_stock_api():
     try:
@@ -38,13 +38,17 @@ def home():
     return "Welcome to RankMyStocks API!"
 
 
-@app.route("/questionaire") #this route will be the initial setup for the queue
+@app.route("/api/questionaire", methods=['POST']) #this route will be the initial setup for the queue
 def questionaire():
+    data = request.get_json()
+    quantity = data.get('questionQTY')
+
+    
     #gets users input for how many stocks they want to rank
     #create initial list of stocks
     #get target size of list
     #store both queueu and winners list in session
-    return "Questionaire!"
+    return f"Questionaire received! You want to rank {quantity} stocks."
 
 @app.route("/pick") #this route will pick the stocks from the queue
 def pick():
