@@ -26,7 +26,13 @@
   object-fit: contain;
   border-radius: 6px;
 }
-
+.navbar-home-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit; /* keeps the same color as your navbar text */
+}
 .navbar-title {
   color: #fff;
   font-size: 1.7rem;

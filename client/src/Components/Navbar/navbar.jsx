@@ -15,8 +15,10 @@ export function Navbar() {
   return (
     <nav className="navbar">
       <div className="navbar-left">
+        <Link to="/" className="navbar-home-link">
         <img src={logo} alt="RankMyStocks logo" className="navbar-logo" />
         <h1 className="navbar-title">RankMyStocks</h1>
+        </Link>
       </div>
 
       <div className="navbar-right">
