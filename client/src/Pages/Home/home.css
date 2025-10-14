@@ -1,0 +1,159 @@
+.home {
+  /* Match the navbar gradient exactly */
+  background: linear-gradient(180deg, #7163f1 0%, #9b6df8 100%);
+  color: white;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 120px 0 80px;
+}
+
+/* Main section container */
+.hero-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 85%;
+  max-width: 1200px;
+  background: rgba(18, 18, 40, 0.85); /* darker translucent card */
+  border-radius: 24px;
+  padding: 60px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  gap: 3rem;
+  backdrop-filter: blur(10px);
+}
+
+/* LEFT SIDE */
+.hero-left {
+  flex: 1;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.hero-subtitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #00f9ff; /* bright cyan accent */
+  margin-bottom: 15px;
+}
+
+.hero-description {
+  color: #d3d4e6;
+  line-height: 1.6;
+  margin-bottom: 30px;
+  max-width: 450px;
+}
+
+/* Create Portfolio button */
+.hero-button {
+  background: linear-gradient(90deg, #00f9ff, #00c6ff);
+  color: #000;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+}
+
+.hero-button:hover {
+  background: linear-gradient(90deg, #00e6e6, #00b8ff);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 255, 255, 0.4);
+}
+
+/* Popup styles */
+.popup-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.save-btn {
+  background: linear-gradient(90deg, #00f9ff, #00c6ff);
+  border: none;
+  color: #000;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.save-btn:hover {
+  background: linear-gradient(90deg, #00e6e6, #00b8ff);
+}
+
+/* RIGHT SIDE */
+.hero-right {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-image {
+  width: 85%;
+  max-width: 380px;
+  border-radius: 20px;
+  z-index: 2;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Floating decor (optional) */
+.floating {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: float 5s ease-in-out infinite;
+}
+
+.ball {
+  width: 50px;
+  height: 50px;
+  background: #00f9ff;
+  top: 15%;
+  left: 15%;
+}
+
+.glow {
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+  bottom: 10%;
+  right: 10%;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .hero-container {
+    flex-direction: column;
+    text-align: center;
+    padding: 40px;
+  }
+
+  .hero-right {
+    margin-top: 40px;
+  }
+
+  .hero-image {
+    width: 70%;
+  }
+}
