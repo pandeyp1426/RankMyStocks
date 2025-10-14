@@ -20,7 +20,7 @@ export function Home() {
           <h2 className="hero-subtitle">Invest Smarter, Rank Better</h2>
           <p className="hero-description">
             Build your portfolio step by step with our smart comparison system.
-            Choose, rank, and analyze stocks interactively; then save your
+            Choose, rank, and analyze stocks interactively - then save your
             results and compare with others.
           </p>
 

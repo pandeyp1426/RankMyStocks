@@ -1,6 +1,15 @@
+/* Make the whole background match — no black borders */
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(90deg, #7163f1 0%, #9b6df8 100%);
+  overflow-x: hidden;
+}
+
 .home {
-  /* Match the navbar gradient exactly */
-  background: linear-gradient(180deg, #7163f1 0%, #9b6df8 100%);
+  background: transparent; /* use the body’s gradient */
   color: white;
   min-height: 100vh;
   display: flex;
@@ -9,20 +18,21 @@
   padding: 120px 0 80px;
 }
 
-/* Main section container */
+
 .hero-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 85%;
-  max-width: 1200px;
-  background: rgba(18, 18, 40, 0.85); /* darker translucent card */
-  border-radius: 24px;
-  padding: 60px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-  gap: 3rem;
-  backdrop-filter: blur(10px);
+  width: 100%;              /* stretch wider across the screen */
+  max-width: 1500px;       /* allow it to grow more */
+  background: rgba(37, 37, 92, 0.9);  /* rich, solid dark-blue background */
+  border-radius: 39px;     /* slightly more rounded like the reference */
+  padding: 80px 100px;     /* more breathing space */
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.35);
+  gap: 4rem;
+  backdrop-filter: blur(8px);
 }
+
 
 /* LEFT SIDE */
 .hero-left {
@@ -156,4 +166,7 @@
   .hero-image {
     width: 70%;
   }
+}
+body {
+  background-attachment: fixed;
 }
