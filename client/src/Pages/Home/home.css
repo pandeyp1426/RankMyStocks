@@ -23,7 +23,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;              /* stretch wider across the screen */
+  width: 90%;              /* stretch wider across the screen */
   max-width: 1500px;       /* allow it to grow more */
   background: rgba(37, 37, 92, 0.9);  /* rich, solid dark-blue background */
   border-radius: 39px;     /* slightly more rounded like the reference */
