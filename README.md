@@ -19,7 +19,24 @@ cd server
 
 flask –-app app run 
 
+If you can't get your venv running 
 
+open terminal
+
+cd server
+
+Remove-Item -Recurse -Force .venv
+
+python -m ensurepip --upgrade
+
+python -m venv .venv
+
+.venv\Scripts\Activate.ps1     
+
+flask --app app run
+
+
+ 
 
 
 Front End-  
