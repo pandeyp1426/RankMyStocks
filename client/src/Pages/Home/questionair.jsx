@@ -89,61 +89,108 @@ export function Questionair() {
   };
 
   return (
-    <div>
-      <p>
-      <h1>{ portfolioName }</h1>
-      <h1> { questionQTY }  Total Questions </h1>
-      <h1>Pick A Stock</h1>
-      </p>
+  <div className="questionair-page">
+    <div className="questionair-wrapper">
+      {/* LEFT MAIN BOX */}
+      <div className="question-box">
+        <div className="questionair-header">
+          <h1>{portfolioName || "Your Portfolio"}</h1>
+          <p>{questionQTY} Rounds</p>
+          <h2>Which stock would you prefer?</h2>
+        </div>
 
-      <div className="button-container">
-        <button
-          className="questionair-button"
-          onClick={() => handlePick(stock1)}
-          disabled={!stock1}
-        >
+        <div className="stock-compare-container">
           {stock1 && (
+<<<<<<< HEAD:client/src/Pages/questionair.jsx
             <>
               <div className="stock-ticker">{stock1.ticker}</div>
               <div className="stock-name">{stock1.name}</div>
               <div className="stock-price">${Number(stock1.price).toFixed(2)}</div>
               <div className="stock-description">{stock1.description}</div>
             </>
+=======
+            <div
+              className="stock-card"
+              onClick={() => handlePick(stock1)}
+              role="button"
+              tabIndex={0}
+            >
+              <button className="info-icon" title={stock1.description}>ⓘ</button>
+              <h3 className="stock-ticker">{stock1.ticker}</h3>
+              <p className="stock-name">{stock1.name}</p>
+              <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
+              <p className="stock-change positive">+2.34 (+1.35%)</p>
+            </div>
+>>>>>>> Sprint1_Pradeep:client/src/Pages/Home/questionair.jsx
           )}
-        </button>
 
-        <button
-          className="questionair-button"
-          onClick={() => handlePick(stock2)}
-          disabled={!stock2}
-        >
+          <div className="vs-text">VS</div>
+
           {stock2 && (
+<<<<<<< HEAD:client/src/Pages/questionair.jsx
             <>
               <div className="stock-ticker">{stock2.ticker}</div>
               <div className="stock-name">{stock2.name}</div>
               <div className="stock-price">{stock2.price ? `$${Number(stock2.price).toFixed(2)}` : "N/A"}</div>
               <div className="stock-description">{stock2.description}</div>
             </>
+=======
+            <div
+              className="stock-card"
+              onClick={() => handlePick(stock2)}
+              role="button"
+              tabIndex={0}
+            >
+              <button className="info-icon" title={stock2.description}>ⓘ</button>
+              <h3 className="stock-ticker">{stock2.ticker}</h3>
+              <p className="stock-name">{stock2.name}</p>
+              <p className="stock-price">${Number(stock2.price).toFixed(2)}</p>
+              <p className="stock-change negative">-1.23 (-1.23%)</p>
+            </div>
+>>>>>>> Sprint1_Pradeep:client/src/Pages/Home/questionair.jsx
           )}
-        </button>
-      </div>
+        </div>
 
-      <div style={{ marginTop: "20px" }}>
         <button className="reroll-button" onClick={handleReroll}>
           Reroll Stocks
         </button>
       </div>
 
-      <div className="selection-history">
-        <h2>Selected Stocks:</h2>
-        <ul>
+      {/* RIGHT PORTFOLIO BOX */}
+      <div className="portfolio-box">
+        <h2>💼 My Portfolio</h2>
+        <div className="portfolio-info">
+          <p>
+            Total Stocks: <span>{selectedStocks.length}</span>
+          </p>
+          <p>
+            Portfolio Value:{" "}
+            <span>
+              $
+              {selectedStocks
+                .reduce((sum, s) => sum + Number(s.price || 0), 0)
+                .toFixed(2)}
+            </span>
+          </p>
+          <p>
+            Selections Made: <span>{selectedStocks.length}</span>
+          </p>
+        </div>
+
+        <ul className="portfolio-list">
           {selectedStocks.map((s, i) => (
             <li key={i}>
-              {s.name} ({s.ticker}) - ${Number(s.price).toFixed(2)}
+              <div>
+                <strong>{s.ticker}</strong>
+                
+              </div>
+              <span className="portfolio-price">${Number(s.price).toFixed(2)}</span>
             </li>
           ))}
         </ul>
       </div>
     </div>
-  );
+  </div>
+);
+
 }
