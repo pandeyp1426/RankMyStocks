@@ -162,7 +162,7 @@ export function Questionair() {
             <li key={i}>
               <div>
                 <strong>{s.ticker}</strong>
-                <p className="stock-subname">{s.name}</p>
+                
               </div>
               <span className="portfolio-price">${Number(s.price).toFixed(2)}</span>
             </li>
