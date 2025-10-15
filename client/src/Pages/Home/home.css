@@ -108,6 +108,9 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
+  background-color: #00c6ff; /* bright cyan background */
+  padding: 20px;
+  border-radius: 20px;
 }
 
 .hero-image {
@@ -115,7 +118,7 @@ html, body {
   max-width: 380px;
   border-radius: 20px;
   z-index: 2;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(216, 209, 209, 0.3);
 }
 
 /* Floating decor (optional) */
