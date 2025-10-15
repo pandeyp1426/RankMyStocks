@@ -19,7 +19,7 @@ export function PortfolioName() {
         id="myInput"
         value={portfolioName}
         onChange={handleChange}
-        placeholder="Enter portfolio name"
+        placeholder="Name your portfolio"
       />
     </div>
   );

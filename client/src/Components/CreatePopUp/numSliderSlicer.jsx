@@ -3,7 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const numSliderSlice = createSlice({
   name: 'questionQTY',
   initialState: {
-    value: 20,
+    value: 5,
   },//state name and default name
   reducers: {
     setQuestionQTY(state, action) {
