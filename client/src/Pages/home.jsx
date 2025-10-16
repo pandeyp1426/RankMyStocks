@@ -8,9 +8,13 @@ import { PortfolioName } from "../Components/CreatePopUp/portfolioName.jsx";
 
 export function Home() {
   const [buttonPopup, setButtonPopup] = useState(false);
-  function nameCheck(){
+  const [toggleQuestNum, setToggleQuestNum] = useState(false);
+
+  function nameCheck() {
+    setToggleQuestNum(!toggleQuestNum);
   };
-    return (
+
+  return (
     <>
       <div className="header">
         <h1 className="text-grey-500">RankMyStocks</h1>
@@ -20,11 +24,11 @@ export function Home() {
           <h3>Enter Portfolio Name</h3>
           <PortfolioName />
           <NumSlider />
-          <Link to="/questionair">
+          <Link to="/questionair" state={{ toggleQuestNum }}>
             <button onClick={nameCheck} className="save-btn">Save</button>
           </Link>
         </Popup>
       </div>
     </>
-    )
+  )
 }
