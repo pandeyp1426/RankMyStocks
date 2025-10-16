@@ -1,11 +1,10 @@
-import { HashRouter as Router, Routes, Route } from 'react-router-dom'
-import { Layout } from './layout.jsx'
-import { Home } from './Pages/home.jsx'
-import { MyPortfolios } from './Pages/myPortfolios.jsx'
-import { PortfolioRankings } from './Pages/portfolioRankings.jsx'
-import { Questionair } from './Pages/questionair.jsx'
-import './App.css'
-
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Home } from "./Pages/Home/home.jsx";
+import { MyPortfolios } from "./Pages/MyPortfolio/myPortfolios.jsx";
+import { PortfolioRankings } from "./Pages/Rankings/portfolioRankings.jsx";
+import { Questionair } from "./Pages/Home/questionair.jsx";
+import { Layout } from "./layout.jsx";
+import "./App.css";
 function App() {
   return (
     <Router>
