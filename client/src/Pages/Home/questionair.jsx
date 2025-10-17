@@ -1,14 +1,8 @@
-import { useLocation } from 'react-router-dom';
-
 import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
 import "./Questionair.css";
 
-export function Questionair () {
-  // Recieve question count
-  const location = useLocation();
-  const { toggleQuestNum } = location.state || {}
-
+export function Questionair() {
   //Fetching values from store and assigning them for use
   const portfolioName = useSelector((state) => state.portfolio.portfolioName);
   const questionQTY = useSelector((state) => state.questionQTY.value);
@@ -18,20 +12,15 @@ export function Questionair () {
   const [selectedStocks, setSelectedStocks] = useState([]);
   const didFetchRef = useRef(false);
 
-  // 👇 API URL comes from .env (client/.env)
-  const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:5001";
+   // 👇 API URL comes from .env (client/.env)
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
   
+  
+
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {
       let data1, data2;
-
-      const response = await fetch(`${API_URL}/init`, {
-        headers: { 'Content-type': 'application/json' },
-        method: 'POST',
-        body: JSON.stringify({ questionQTY })
-      })
-      const data = await response.json()
 
       do {
         data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
@@ -59,7 +48,7 @@ export function Questionair () {
       fetchTwoStocks();
       didFetchRef.current = true;
     }
-  }, [toggleQuestNum]);
+  }, [API_URL]);
 
   // when user picks a stock
   const handlePick = (stock) => {
