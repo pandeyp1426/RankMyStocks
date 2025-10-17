@@ -44,17 +44,20 @@ def initialize():
     data = request.get_json()
     questionQTY = data.get("questionQTY", 10) #gets questionQTY from frontend and defaults to 10 if not provided
 
+    return questionQTY
 
 
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     #this function will get the next stock pair from the queue
 
+    return 0
 
 @app.route("/pick", methods=["POST"])
 def pick_stock():
     #this function will pick the stock from the pair and add it to the portfolio
 
+    return 0
 
 @app.route("/db-test")
 def db_test():
