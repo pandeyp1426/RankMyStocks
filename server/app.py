@@ -6,10 +6,10 @@ import urllib.request
 import json
 import os
 from flask_cors import CORS
-from dotenv import load_dotenv
-import urllib.parse
 
-load_dotenv()  # Load environment variables from a .env file
+import urllib.parse
+import userPortfolios
+
 app = Flask(__name__)
 CORS(app)
 from stocks import random_stock, get_stock_price, get_company_name, get_description

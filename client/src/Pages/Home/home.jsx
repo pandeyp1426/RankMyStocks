@@ -3,14 +3,14 @@ import { useState } from "react";
 import { Popup } from "../../Components/CreatePopUp/popup.jsx";
 import { PortfolioName } from "../../Components/CreatePopUp/portfolioName.jsx";
 import { NumSlider } from "../../Components/CreatePopUp/numSlider.jsx";
+import { nameCheck } from "../../Components/CreatePopUp/nameCheck.jsx";
+import { useSelector } from 'react-redux';
 import "./home.css";
 import appPreview from "../../assets/img/logo.png"; // you can replace this with any preview image
 
 export function Home() {
   const [buttonPopup, setButtonPopup] = useState(false);
-
-  function nameCheck() {}
-
+  const portfolioName = useSelector((state) => state.portfolio.portfolioName);
   return (
     <div className="home">
       <section className="hero-container">
@@ -36,9 +36,9 @@ export function Home() {
             <PortfolioName />
             <NumSlider />
             <Link to="/questionair">
-              <button onClick={nameCheck} className="save-btn">
-                Save
-              </button>
+            <button onClick={() => nameCheck(portfolioName)} className="save-btn">
+              Save
+            </button>
             </Link>
           </Popup>
         </div>
