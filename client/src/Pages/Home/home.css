@@ -117,7 +117,7 @@ html, body {
   width: 85%;
   max-width: 380px;
   border-radius: 20px;
-  z-index: 2;
+
   box-shadow: 0 10px 30px rgba(216, 209, 209, 0.3);
 }
 
