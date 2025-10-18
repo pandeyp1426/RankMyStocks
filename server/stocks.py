@@ -3,6 +3,7 @@ import json
 import random
 import requests
 import queue
+import secrets
 from datetime import datetime, timedelta
 
 #premium API Key 75 calls perminute
@@ -141,6 +142,17 @@ def get_description(ticker):
         print("Error getting descrioption")
         return None
 
+def list_to_queue(list):
+    stock_queue = queue.Queue()
+    for item in list:
+        stock_queue.put(item)
+    return stock_queue
+
+def queue_to_list(queue):
+    stock_list = []
+    while not queue.empty():
+        list.append(queue.get())
+    return list
 
 def generate_stock_queue(questionQTY):
     stock_queue = queue.Queue()
@@ -163,6 +175,8 @@ def test_pick_stocks(stock_queue):
             print(f"You picked {stock2}")
             portoflio.append(stock2)
     return portoflio
+
+#print(secrets.token_hex(32))
 
 #test code
 #stock_queue = generate_stock_queue(5)

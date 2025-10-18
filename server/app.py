@@ -1,7 +1,6 @@
-from flask import Flask, jsonify, request
+from flask import Flask, session, jsonify, request
 import mysql.connector
 import urllib.request
-import json
 import os
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -10,9 +9,9 @@ import stocks
 
 load_dotenv()  # Load environment variables from a .env file
 app = Flask(__name__)
-CORS(app)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
+CORS(app, supports_credentials=True)
 from stocks import random_stock, get_stock_price, get_company_name, get_description
-
 
 # ---- random stock ----
 @app.route("/api/random-stock")
@@ -34,6 +33,39 @@ def random_stock_api():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/pair-data")
+def get_pair_data():
+    try:
+        ticker1 = session.get('stock_pair', [None, None])[0]
+        if not ticker1:
+            return jsonify({"error": "No stock1 found"}), 500
+        price1 = get_stock_price(ticker1)
+        name1 = get_company_name(ticker1)
+        description1 = get_description(ticker1)
+        
+        ticker2 = session.get('stock_pair', [None, None])[1]
+        if not ticker2:
+            return jsonify({"error": "No stock2 stock found"}), 500
+        price2 = get_stock_price(ticker2)
+        name2 = get_company_name(ticker2)
+        description2 = get_description(ticker2)
+
+        return jsonify({
+            "ticker1": ticker1,
+            "name1": name1,
+            "price1": float(price1) if price1 else None,
+            "description1": description1,
+
+            "ticker2": ticker2,
+            "name2": name2,
+            "price2": float(price2) if price2 else None,
+            "description2": description2
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
 @app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
@@ -41,13 +73,16 @@ def home():
 
 @app.route("/init", methods=["POST"])
 def initialize():
-    #here we will initilaze the queue with N sotck pairs 
+    #receives the question quantity and portfolio name from user 
     data = request.get_json()
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
-    #store portolfioName somewhere to use later
 
     #initializes the stocks queue for the session
+    stock_list = stocks.generate_ticker_list(questionQTY * 2)
+    portfolio = []
+    session['stock_queue'] = stock_list
+    session['portfolio'] = portfolio
 
     return jsonify({
         "status": "initialized", 
@@ -56,12 +91,30 @@ def initialize():
     })
 
 
-
 @app.route("/next", methods=["GET"])
 def get_next_pair():
-    #this function will get the next stock pair from the queue
+    stock_queue = session.get('stock_queue', [])
+    stock_queue = stocks.list_to_queue(stock_queue)
+    stock_pair = []
 
-    return 0
+    if stock_queue.qsize() >= 2:
+        stock1 = stock_queue.get()
+        stock2 = stock_queue.get()
+        stock_pair = [stock1, stock2]
+        session['stock_queue'] = stocks.queue_to_list(stock_queue)
+        session['stock_pair'] = stock_pair
+    else:
+        return jsonify({
+            "status": "error",
+            "message": "Not enough stocks in the queue"
+        }), 400
+
+    return jsonify({
+        "status": "success",
+        "stock_pair": stock_pair
+    })
+
+
 
 @app.route("/pick", methods=["POST"])
 def pick_stock():

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./Questionair.css";
 
+
 export function Questionair() {
   //Fetching values from store and assigning them for use
   const portfolioName = useSelector((state) => state.portfolio.portfolioName);
