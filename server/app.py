@@ -1,18 +1,19 @@
 from flask import Flask, jsonify, request
-import csv
 import mysql.connector
-import random
 import urllib.request
 import json
 import os
 from flask_cors import CORS
 from dotenv import load_dotenv
 import urllib.parse
+import stocks
 
 load_dotenv()  # Load environment variables from a .env file
 app = Flask(__name__)
 CORS(app)
 from stocks import random_stock, get_stock_price, get_company_name, get_description
+
+
 # ---- random stock ----
 @app.route("/api/random-stock")
 def random_stock_api():
@@ -42,9 +43,18 @@ def home():
 def initialize():
     #here we will initilaze the queue with N sotck pairs 
     data = request.get_json()
-    questionQTY = data.get("questionQTY", 10) #gets questionQTY from frontend and defaults to 10 if not provided
+    questionQTY = data.get("questionQTY")
+    portolfioName = data.get("portfolioName")
+    #store portolfioName somewhere to use later
 
-    return questionQTY
+    #initializes the stocks queue for the session
+
+    return jsonify({
+        "status": "initialized", 
+        "questionQTY": questionQTY, 
+        "portfolioName": portolfioName
+    })
+
 
 
 @app.route("/next", methods=["GET"])

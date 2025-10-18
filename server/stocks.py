@@ -53,7 +53,6 @@ def get_stock_price(ticker):
         print("Error retrieving stock price for ticker:", ticker)
         return None
 
-
 def get_company_name(ticker):
     function = "OVERVIEW"
     url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
@@ -143,6 +142,33 @@ def get_description(ticker):
         return None
 
 
+def generate_stock_queue(questionQTY):
+    stock_queue = queue.Queue()
+    tickers = generate_ticker_list(questionQTY * 2)
+    for ticker in tickers:
+        stock_queue.put(ticker)
+    return stock_queue
 
-stock = get_stock_price("INTC")
-print(stock)
+
+def test_pick_stocks(stock_queue):
+    portoflio = []
+    while stock_queue.empty() == False:
+        stock1  = stock_queue.get()
+        stock2  = stock_queue.get()
+        stock_pick = input(f"Pick stock 1 or 2: {stock1} vs {stock2}")
+        if stock_pick == "1":
+            print(f"You picked {stock1}")
+            portoflio.append(stock1)
+        else:
+            print(f"You picked {stock2}")
+            portoflio.append(stock2)
+    return portoflio
+
+#test code
+#stock_queue = generate_stock_queue(5)
+#print(list(stock_queue.queue))
+
+#portfolio = test_pick_stocks(stock_queue)
+#print("Your portfolio:", portfolio)
+
+
