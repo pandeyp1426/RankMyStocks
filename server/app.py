@@ -8,8 +8,12 @@ import os
 from flask_cors import CORS
 from dotenv import load_dotenv
 import urllib.parse
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"
 
 load_dotenv()  # Load environment variables from a .env file
+
 app = Flask(__name__)
 CORS(app)
 from stocks import random_stock, get_stock_price, get_company_name, get_description
@@ -36,6 +40,21 @@ def random_stock_api():
 @app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
+@app.route("/get-stock-info", methods=["GET"])
+def random_stock():
+    with open("ticker_list.csv", mode='r') as file:
+        reader = csv.reader(file)
+        stock_list = list(reader)
+    return random.choice(stock_list)[0] if stock_list else None
+def get_stock_info():
+    stock = random_stock()
+    model = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", api_key=OPEN_AI_API_KEY)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a helpful financial assistant that provides concise and accurate stock information and provide recent events about :{stock} 100 characters"),
+        ])
+    chain = prompt | model
+    response = chain.invoke({"stock": stock})
+    return jsonify({"stock": stock, "info": response.content})
 
 
 @app.route("/init", methods=["POST"])
