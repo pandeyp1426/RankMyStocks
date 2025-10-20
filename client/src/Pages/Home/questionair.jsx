@@ -1,6 +1,8 @@
 import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import "./Questionair.css";
+
 
 export function Questionair() {
   //Fetching values from store and assigning them for use
@@ -13,16 +15,12 @@ export function Questionair() {
   const didFetchRef = useRef(false);
 
    // 👇 API URL comes from .env (client/.env)
-  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5001";
   
-  
-
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {
       let data1, data2;
-
-      
 
       do {
         data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
@@ -44,9 +42,25 @@ export function Questionair() {
     }
   };
 
+  //function to send questionQTY to backend
+  const sendQuestionQTY = async () => {
+    try {
+      const response = await axios.post(`${API_URL}/init`, {
+        portolfioName: portfolioName,
+        questionQTY: questionQTY
+    });
+    console.log("Successfully sent questionQTY:", response.data);
+    return response.data;
+  } catch (err) {
+    console.error("Error sending questionQTY:", err);
+  }
+};
+
+
   // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
+      sendQuestionQTY();
       fetchTwoStocks();
       didFetchRef.current = true;
     }
