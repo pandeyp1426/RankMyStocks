@@ -3,6 +3,7 @@ import json
 import random
 import requests
 import queue
+import secrets
 from datetime import datetime, timedelta
 
 #premium API Key 75 calls perminute
@@ -56,7 +57,6 @@ def get_stock_price(ticker):
     except (KeyError, IndexError):
         print("Error retrieving stock price for ticker:", ticker)
         return None
-
 
 def get_company_name(ticker):
     function = "OVERVIEW"
@@ -146,44 +146,47 @@ def get_description(ticker):
         print("Error getting descrioption")
         return None
 
-def is_empty(Queue):
-    return len(Queue) == 0
-
-def list_to_queue(stock_list):
-    stock_queue = queue.deque(stock_list)
+def list_to_queue(list):
+    stock_queue = queue.Queue()
+    for item in list:
+        stock_queue.put(item)
     return stock_queue
 
-def queue_to_list(stock_queue):
-    stock_list = list(stock_queue)
-    return stock_list
+def queue_to_list(queue):
+    stock_list = []
+    while not queue.empty():
+        list.append(queue.get())
+    return list
 
-def pick_stocks(num_stocks):
-    stock_list = generate_ticker_list(num_stocks)
-    stock_queue = list_to_queue(stock_list)
-    winners = []
+def generate_stock_queue(questionQTY):
+    stock_queue = queue.Queue()
+    tickers = generate_ticker_list(questionQTY * 2)
+    for ticker in tickers:
+        stock_queue.put(ticker)
+    return stock_queue
 
-    while is_empty(stock_queue) == False:
-        stock1 = stock_queue.popleft()
-        stock2 = stock_queue.popleft()
-        print("Comparing stocks:")
-        print("Stock 1:", stock1)
-        print("Stock 2:", stock2)
 
-        choice = input("Which stock do you prefer? (1 or 2): ")
-        if choice == '1':
-            winners.append(stock1)
-        elif choice == '2':
-            winners.append(stock2)
+def test_pick_stocks(stock_queue):
+    portoflio = []
+    while stock_queue.empty() == False:
+        stock1  = stock_queue.get()
+        stock2  = stock_queue.get()
+        stock_pick = input(f"Pick stock 1 or 2: {stock1} vs {stock2}")
+        if stock_pick == "1":
+            print(f"You picked {stock1}")
+            portoflio.append(stock1)
         else:
-            print("Invalid choice. Please enter 1 or 2.")
-            stock_queue.appendleft(stock2)
-            stock_queue.appendleft(stock1)
-    
-    return winners
-    
+            print(f"You picked {stock2}")
+            portoflio.append(stock2)
+    return portoflio
+
+#print(secrets.token_hex(32))
+
+#test code
+#stock_queue = generate_stock_queue(5)
+#print(list(stock_queue.queue))
+
+#portfolio = test_pick_stocks(stock_queue)
+#print("Your portfolio:", portfolio)
 
 
-
-
-#stock_winners = pick_stocks(10)
-#print(stock_winners)

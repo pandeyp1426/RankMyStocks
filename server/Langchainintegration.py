@@ -24,8 +24,10 @@ stock = random_stock()
 
 model = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", api_key=OPEN_AI_API_KEY)
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful financial assistant that provides concise and accurate stock information and provide recent events about :{stock} "),])
+    ("system", "You are a helpful financial assistant that provides concise and accurate stock information and provide recent events about :{stock} 100 characters"),])
 
 chain = prompt | model
 response = chain.invoke({"stock": stock})
-print(response)
+def AI_response():
+    return response
+print(AI_response())

@@ -1,6 +1,8 @@
 import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import "./Questionair.css";
+
 
 export function Questionair() {
   //Fetching values from store and assigning them for use
@@ -13,39 +15,12 @@ export function Questionair() {
   const didFetchRef = useRef(false);
 
    // 👇 API URL comes from .env (client/.env)
-  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5001";
   
-  
-  const sendQuestionaire = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/questionaire`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json', // Tell the server we are sending JSON
-        },
-        body: JSON.stringify({ questionQTY: questionQTY }), // Convert the JS object to a JSON string
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json(); // Parse the JSON response from py
-      setResponseMessage(data.message); // Update the message with the server's response
-
-    } catch (error) {
-      console.error("Error sending number:", error);
-      setResponseMessage("Failed to send number to the server.");
-    }
-  };
-
-
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {
       let data1, data2;
-
-      
 
       do {
         data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
@@ -67,9 +42,25 @@ export function Questionair() {
     }
   };
 
+  //function to send questionQTY to backend
+  const sendQuestionQTY = async () => {
+    try {
+      const response = await axios.post(`${API_URL}/init`, {
+        portolfioName: portfolioName,
+        questionQTY: questionQTY
+    });
+    console.log("Successfully sent questionQTY:", response.data);
+    return response.data;
+  } catch (err) {
+    console.error("Error sending questionQTY:", err);
+  }
+};
+
+
   // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
+      sendQuestionQTY();
       fetchTwoStocks();
       didFetchRef.current = true;
     }
