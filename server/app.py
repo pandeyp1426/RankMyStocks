@@ -12,8 +12,8 @@ import userPortfolios
 
 app = Flask(__name__)
 CORS(app)
-from stocks import random_stock, get_stock_price, get_company_name, get_description
-# ---- random stock ----
+import stocks # ---- random stock ----
+
 @app.route("/api/random-stock")
 def random_stock_api():
     try:
@@ -38,26 +38,33 @@ def home():
     return "Welcome to RankMyStocks API!"
 
 
-@app.route("/init", methods=["POST"])
-def initialize():
-    #here we will initilaze the queue with N sotck pairs 
+@app.route("/api/questionaire", methods=['POST']) #this route will be the initial setup for the queue
+def questionaire():
     data = request.get_json()
-    questionQTY = data.get("questionQTY", 10) #gets questionQTY from frontend and defaults to 10 if not provided
+    quantity = data.get('questionQTY')
 
-    return questionQTY
+    
+    #gets users input for how many stocks they want to rank
+    #create initial list of stocks
+    #get target size of list
+    #store both queueu and winners list in session
+    return f"Questionaire received! You want to rank {quantity} stocks."
 
+@app.route("/pick") #this route will pick the stocks from the queue
+def pick():
+    #load stocks from the queue
+    #check if queue is empty
+    #if not empty, pop the first 2 stocks in the queue
+    #add winner to winners list
+    #repeat until queue is empty
+    return "Pick a stock!"
 
-@app.route("/next", methods=["GET"])
-def get_next_pair():
-    #this function will get the next stock pair from the queue
+@app.route("/submit") #this route will submit the final ranked list
+def submit():
+    #load winners list from session
+    #store winners list in database
+    return "Submit your ranked list!"
 
-    return 0
-
-@app.route("/pick", methods=["POST"])
-def pick_stock():
-    #this function will pick the stock from the pair and add it to the portfolio
-
-    return 0
 
 @app.route("/db-test")
 def db_test():
@@ -77,6 +84,7 @@ def db_test():
         return jsonify({"status": "success", "database": db_name})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
 
 @app.route("/api/portfolios", methods=["POST"])
 def create_portfolio():
@@ -121,6 +129,7 @@ def create_portfolio():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # ---- list portfolios ----
 @app.route("/api/portfolios", methods=["GET"])
@@ -168,6 +177,8 @@ def list_portfolios():
         return jsonify(list(portfolios.values()))
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
 
 # ---- entrypoint ----
 if __name__ == "__main__":

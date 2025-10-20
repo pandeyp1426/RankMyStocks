@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 #premium API Key 75 calls perminute
 API_KEY = "YN7QP69QPEBTJVKO"
 
+def test_function():
+    return "This is a test function"
 
 #generates random list of tickers based on given size
 def generate_ticker_list(size):
@@ -15,6 +17,8 @@ def generate_ticker_list(size):
     for i in range(size):
         tickers.append(random_stock())
     return tickers
+
+
 
 #gets random ticker form a list of tickers
 def random_stock():
@@ -142,7 +146,44 @@ def get_description(ticker):
         print("Error getting descrioption")
         return None
 
+def is_empty(Queue):
+    return len(Queue) == 0
+
+def list_to_queue(stock_list):
+    stock_queue = queue.deque(stock_list)
+    return stock_queue
+
+def queue_to_list(stock_queue):
+    stock_list = list(stock_queue)
+    return stock_list
+
+def pick_stocks(num_stocks):
+    stock_list = generate_ticker_list(num_stocks)
+    stock_queue = list_to_queue(stock_list)
+    winners = []
+
+    while is_empty(stock_queue) == False:
+        stock1 = stock_queue.popleft()
+        stock2 = stock_queue.popleft()
+        print("Comparing stocks:")
+        print("Stock 1:", stock1)
+        print("Stock 2:", stock2)
+
+        choice = input("Which stock do you prefer? (1 or 2): ")
+        if choice == '1':
+            winners.append(stock1)
+        elif choice == '2':
+            winners.append(stock2)
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+            stock_queue.appendleft(stock2)
+            stock_queue.appendleft(stock1)
+    
+    return winners
+    
 
 
-stock = get_stock_price("INTC")
-print(stock)
+
+
+#stock_winners = pick_stocks(10)
+#print(stock_winners)
