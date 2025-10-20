@@ -87,20 +87,6 @@ html, body {
   margin-bottom: 10px;
 }
 
-.save-btn {
-  background: linear-gradient(90deg, #00f9ff, #00c6ff);
-  border: none;
-  color: #000;
-  padding: 10px 20px;
-  border-radius: 25px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 10px;
-}
-
-.save-btn:hover {
-  background: linear-gradient(90deg, #00e6e6, #00b8ff);
-}
 
 /* RIGHT SIDE */
 .hero-right {

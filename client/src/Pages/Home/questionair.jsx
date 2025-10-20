@@ -46,7 +46,7 @@ export function Questionair() {
   const sendQuestionQTY = async () => {
     try {
       const response = await axios.post(`${API_URL}/init`, {
-        portolfioName: portfolioName,
+        portfolioName: portfolioName,
         questionQTY: questionQTY
     });
     console.log("Successfully sent questionQTY:", response.data);
@@ -54,7 +54,7 @@ export function Questionair() {
   } catch (err) {
     console.error("Error sending questionQTY:", err);
   }
-};
+  };
 
 
   // only run once on mount

@@ -77,7 +77,6 @@ def initialize():
     data = request.get_json()
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
-
     #initializes the stocks queue for the session
     stock_list = stocks.generate_ticker_list(questionQTY * 2)
     portfolio = []
