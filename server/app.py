@@ -12,6 +12,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 CORS(app, supports_credentials=True)
 from stocks import random_stock, get_stock_price, get_company_name, get_description
+from Langchainintegration import AI_response, describe_ticker
 
 # ---- random stock ----
 @app.route("/api/random-stock")
@@ -30,6 +31,37 @@ def random_stock_api():
             "price": float(price) if price else None,
             "description": description
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/describe-random")
+def describe_random():
+    """Return a LangChain description for a random ticker (uses stocks.random_stock)."""
+    try:
+        ticker = random_stock()
+        if not ticker:
+            return jsonify({"error": "No random stock found"}), 500
+
+        response = AI_response(ticker)
+        # AI_response may return an object with a .content attribute or a string
+        description = getattr(response, "content", str(response))
+        return jsonify({"ticker": ticker, "description": description})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/describe")
+def describe_ticker_api():
+    """Return a LangChain description for a provided ticker via ?ticker=SYMBOL"""
+    try:
+        ticker = request.args.get("ticker")
+        if not ticker:
+            return jsonify({"error": "Missing ticker parameter"}), 400
+
+        response = AI_response(ticker)
+        description = getattr(response, "content", str(response))
+        return jsonify({"ticker": ticker, "description": description})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
