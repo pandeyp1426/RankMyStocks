@@ -27,7 +27,7 @@ export function Home() {
           >
             Create Portfolio
           </button>
-    
+
           <Popup trigger={buttonPopup} setTrigger={setButtonPopup}>
             <h3 className="popup-title">Enter Portfolio Name</h3>
             <PortfolioName />
