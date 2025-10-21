@@ -37,7 +37,6 @@ export function Home() {
             <PortfolioName />
             <NumSlider />
             <NameCheck/>
-            </Link>
           </Popup>
         </div>
 
