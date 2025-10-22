@@ -37,7 +37,9 @@ def random_stock_api():
 def home():
     return "Welcome to RankMyStocks API!"
 
+# ---- database test ----
 @app.route("/db-test")
+# Test database connection
 def db_test():
     try:
         import mysql.connector
@@ -114,24 +116,36 @@ def list_portfolios():
         )
         cursor = conn.cursor(dictionary=True)
 
+        # Include created_at and sort newest first (LIFO)
         cursor.execute("""
-            SELECT p.id, p.name, ps.ticker, ps.price
+            SELECT 
+                p.id, 
+                p.name, 
+                p.created_at,
+                ps.ticker, 
+                ps.price
             FROM portfolios p
             LEFT JOIN portfolio_stocks ps ON p.id = ps.portfolio_id
+            ORDER BY p.created_at DESC
         """)
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
 
-        # Group rows into portfolios
+        # Group rows into portfolio objects
         portfolios = {}
         for r in rows:
             pid = r["id"]
-            portfolios.setdefault(pid, {
-                "id": pid,
-                "name": r["name"],
-                "stocks": []
-            })
+            if pid not in portfolios:
+                portfolios[pid] = {
+                    "id": pid,
+                    "name": r["name"],
+                    "created_at": (
+                        r["created_at"].isoformat() if r["created_at"] else None
+                    ),
+                    "stocks": []
+                }
+
             if r["ticker"]:
                 price_value = 0.0
                 try:
@@ -145,7 +159,15 @@ def list_portfolios():
                     "price": price_value
                 })
 
-        return jsonify(list(portfolios.values()))
+        # Convert to list sorted by created_at DESC (newest first)
+        sorted_portfolios = sorted(
+            portfolios.values(),
+            key=lambda x: x["created_at"] or "",
+            reverse=True
+        )
+
+        return jsonify(sorted_portfolios)
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
