@@ -6,7 +6,6 @@ import App from './App.jsx';
 import store from './store.jsx';
 import './index.css';
 
-// ✅ In Vite, env vars must be accessed via import.meta.env
 const domain = import.meta.env.VITE_AUTH0_DOMAIN;
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
 

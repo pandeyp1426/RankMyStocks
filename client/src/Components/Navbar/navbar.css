@@ -1,4 +1,3 @@
-/* General Navbar Styling */
 .navbar {
   position: fixed;
   top: 0;
@@ -17,7 +16,6 @@
 .navbar-left {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .navbar-logo {
@@ -26,13 +24,15 @@
   object-fit: contain;
   border-radius: 6px;
 }
+
 .navbar-home-link {
   display: flex;
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  color: inherit; /* keeps the same color as your navbar text */
+  color: inherit; 
 }
+
 .navbar-title {
   color: #fff;
   font-size: 1.7rem;
@@ -40,14 +40,12 @@
   margin: 0;
 }
 
-/* Right-side links and buttons */
 .navbar-right {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem; 
 }
 
-/* Normal Nav Links */
 .navbar-link {
   color: #fff;
   text-decoration: none;
@@ -59,43 +57,41 @@
   color: #facc15;
 }
 
-/* Auth Buttons */
 .auth-buttons {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-left: 1rem;
+  gap: 0.5rem;
 }
 
 .login-btn,
-.signup-btn {
+.logout-btn {
   text-decoration: none;
   font-weight: 600;
   padding: 8px 18px;
   border-radius: 25px;
   transition: all 0.25s ease-in-out;
   font-size: 0.95rem;
+  cursor: pointer;
 }
 
-/* Outline Log In */
 .login-btn {
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
-  color: #fff;
-}
-
-.login-btn:hover {
-  border-color: #00f9ff;
-  color: #00f9ff;
-}
-
-/* Solid Sign Up */
-.signup-btn {
   background-color: #00f9ff;
   color: #000;
   border: 1.5px solid #00f9ff;
 }
 
-.signup-btn:hover {
+.login-btn:hover {
+  background-color: #00e0e0;
+  border-color: #00e0e0;
+}
+
+.logout-btn {
+  background-color: #00f9ff;
+  color: #000;
+  border: 1.5px solid #00f9ff;
+}
+
+.logout-btn:hover {
   background-color: #00e0e0;
   border-color: #00e0e0;
 }
