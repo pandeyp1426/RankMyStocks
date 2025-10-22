@@ -11,11 +11,10 @@ html, body {
 .home {
   background: transparent; /* use the body’s gradient */
   color: white;
-  min-height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 120px 0 80px;
 }
 
 
@@ -23,14 +22,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 90%;              /* stretch wider across the screen */
-  max-width: 1500px;       /* allow it to grow more */
+  width: 85%;              /* stretch wider across the screen */
+  max-width: 1200px;       /* allow it to grow more */
   background: rgba(37, 37, 92, 0.9);  /* rich, solid dark-blue background */
   border-radius: 39px;     /* slightly more rounded like the reference */
   padding: 80px 100px;     /* more breathing space */
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.35);
   gap: 4rem;
   backdrop-filter: blur(8px);
+  margin-bottom: 80px;
 }
 
 
@@ -172,4 +172,79 @@ html, body {
 }
 body {
   background-attachment: fixed;
+}
+/* ---------- MAIN PORTFOLIO SECTION ---------- */
+.main-portfolio {
+  width: 90%;
+  max-width: 1000px;
+  margin-bottom: 120px;
+  display: flex;
+  justify-content: center;
+}
+
+.portfolio-card {
+  width: 100%;
+  max-width: 700px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.1);
+  color: #111;
+}
+
+
+.portfolio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.portfolio-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.timeframe-select {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #f6f6f6;
+  margin-left: 1rem;
+}
+
+
+.portfolio-value {
+  font-size: 2.8rem;
+  font-weight: 800;
+  margin-top: 0.5rem;
+}
+
+.portfolio-sub {
+  color: #00c27a;
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+
+.portfolio-chart {
+  background: linear-gradient(180deg, #e8f9f8, #f1f8fe);
+  border-radius: 12px;
+  height: 250px;
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-placeholder {
+  color: #555;
+  opacity: 0.6;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* ---------- SCROLL BEHAVIOR ---------- */
+html, body {
+  scroll-behavior: smooth;
 }

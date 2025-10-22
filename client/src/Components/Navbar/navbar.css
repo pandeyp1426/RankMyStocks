@@ -4,16 +4,21 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 72px;
+  height: 82px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 80px;
+  padding: 0 2rem;
   background: linear-gradient(90deg, #7163f1, #9b6df8);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1000;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
-
+/* Ensure items never get cut off */
+.navbar * {
+  box-sizing: border-box;
+}
 .navbar-left {
   display: flex;
   align-items: center;

@@ -1,0 +1,213 @@
+/* --- Overall Page Layout --- */
+.my-portfolios-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #7163f1 0%, #9b6df8 100%);
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "Inter", sans-serif;
+}
+
+/* --- Page Header --- */
+.page-header {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* --- Sort Controls --- */
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Dropdown */
+.sort-dropdown {
+  background: #ffffff;
+  border: 2px solid #8a77f8;
+  color: #333;
+  font-size: 1rem;
+  border-radius: 10px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-dropdown:hover {
+  border-color: #6b5ef7;
+}
+
+.sort-dropdown:focus {
+  outline: none;
+  box-shadow: 0 0 4px rgba(113, 99, 241, 0.4);
+}
+
+/* Arrow Toggle Button */
+.order-toggle {
+  background: #fff;
+  border: 2px solid #8a77f8;
+  border-radius: 10px;
+  padding: 0.35rem 0.75rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.order-toggle:hover {
+  background: #8a77f8;
+  color: #fff;
+}
+
+/* --- Grid Layout (4 Columns) --- */
+.portfolios-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.8rem;
+  width: 100%;
+  max-width: 1400px;
+  grid-auto-flow: row;
+}
+
+/* --- Portfolio Card --- */
+.portfolio-card {
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+  height: 360px;
+}
+
+.portfolio-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* --- Header inside Card --- */
+.portfolio-header h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #3b2c7e;
+  margin-bottom: 0.8rem;
+}
+
+/* --- Portfolio Summary Box --- */
+.portfolio-summary {
+  background: #f4f4f7;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+}
+
+/* --- Stock List Container --- */
+.stock-list-container {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 0.5rem 0.8rem;
+  flex-grow: 1;
+}
+
+.scrollable {
+  overflow-y: auto;
+  max-height: 130px;
+}
+
+/* Scrollbar Styling */
+.scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+  background: #b8aafc;
+  border-radius: 10px;
+}
+
+.scrollable::-webkit-scrollbar-thumb:hover {
+  background: #9b8dfd;
+}
+
+/* --- Stock Items --- */
+.stock-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stock-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.stock-item:last-child {
+  border-bottom: none;
+}
+
+.ticker {
+  color: #333;
+  font-weight: 600;
+}
+
+.price {
+  color: #1db954;
+  font-weight: 600;
+}
+
+/* --- Loading / Empty States --- */
+.loading-text,
+.error-text,
+.no-portfolios,
+.no-stocks {
+  color: #fff;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 1200px) {
+  .portfolios-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .portfolios-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .portfolios-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .sort-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
