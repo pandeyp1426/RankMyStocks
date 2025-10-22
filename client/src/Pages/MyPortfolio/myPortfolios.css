@@ -1,0 +1,156 @@
+/* --- Page Layout --- */
+.my-portfolios-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #7163f1 0%, #9b6df8 100%);
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* --- Title --- */
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 2.5rem;
+}
+
+/* --- Grid Layout (4 columns) --- */
+.portfolios-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.8rem;
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* --- Card --- */
+.portfolio-card {
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+  height: 360px;
+}
+
+.portfolio-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* --- Header --- */
+.portfolio-header h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #3b2c7e;
+  margin-bottom: 0.8rem;
+}
+
+/* --- Summary --- */
+.portfolio-summary {
+  background: #f4f4f7;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+}
+
+/* --- Stock List Container --- */
+.stock-list-container {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 0.5rem 0.8rem;
+  flex-grow: 1;
+}
+
+/* Only show scroll if more than 5 stocks */
+.scrollable {
+  overflow-y: auto;
+  max-height: 130px;
+}
+
+/* Custom Scrollbar */
+.scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollable::-webkit-scrollbar-thumb {
+  background-color: #b8aafc;
+  border-radius: 10px;
+}
+.scrollable::-webkit-scrollbar-thumb:hover {
+  background-color: #9b8dfd;
+}
+
+/* --- Stock Items --- */
+.stock-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stock-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.stock-item:last-child {
+  border-bottom: none;
+}
+
+.ticker {
+  color: #333;
+  font-weight: 600;
+}
+
+.price {
+  color: #1db954;
+  font-weight: 600;
+}
+
+/* --- States --- */
+.loading-text,
+.error-text,
+.no-portfolios,
+.no-stocks {
+  color: #fff;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1200px) {
+  .portfolios-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .portfolios-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .portfolios-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.portfolios-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.8rem;
+  width: 100%;
+  max-width: 1400px;
+
+  /* ensure items fill left-to-right, then next row */
+  grid-auto-flow: row;   /* <-- add this */
+}

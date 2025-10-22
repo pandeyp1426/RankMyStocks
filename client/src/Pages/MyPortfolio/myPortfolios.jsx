@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import "./myPortfolios.css";
 
 export function MyPortfolios() {
   const [portfolios, setPortfolios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-   // 👇 API URL comes from .env
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
   useEffect(() => {
@@ -15,7 +15,14 @@ export function MyPortfolios() {
         return res.json();
       })
       .then((data) => {
-        setPortfolios(data);
+        // Sort newest first — handles missing or invalid dates gracefully
+         const sorted = [...data].sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at) : 0;
+          const dateB = b.created_at ? new Date(b.created_at) : 0;
+          return dateB - dateA;
+        });
+          
+        setPortfolios(sorted);
         setLoading(false);
       })
       .catch((err) => {
@@ -24,34 +31,63 @@ export function MyPortfolios() {
       });
   }, [API_URL]);
 
-  if (loading) return <p>Loading portfolios...</p>;
-  if (error) return <p className="text-red-500">Error: {error}</p>;
+  if (loading) return <p className="loading-text">Loading portfolios...</p>;
+  if (error) return <p className="error-text">Error: {error}</p>;
 
   return (
-    <div className="px-8 py-6">
-      <h1 className="text-3xl font-bold mb-6">📊 My Portfolios</h1>
+    <div className="my-portfolios-page">
+      <h1 className="page-title">📊 My Portfolios</h1>
+
       {portfolios.length === 0 ? (
-        <p>No portfolios yet. Create one!</p>
+        <p className="no-portfolios">No portfolios yet. Create one!</p>
       ) : (
-        portfolios.map((p) => (
-          <div
-            key={p.id}
-            className="mb-6 p-4 border border-gray-600 rounded-lg bg-gray-800"
-          >
-            <h2 className="text-xl font-semibold mb-2">{p.name}</h2>
-            {p.stocks.length === 0 ? (
-              <p className="text-gray-400">No stocks yet</p>
-            ) : (
-              <ul className="list-disc list-inside">
-                {p.stocks.map((s, i) => (
-                  <li key={i}>
-                    {s.ticker} – ${s.price.toFixed(2)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))
+        <div className="portfolios-grid">
+          {portfolios.map((p) => {
+            const totalValue = p.stocks
+              ? p.stocks.reduce((acc, s) => acc + (s.price || 0), 0).toFixed(2)
+              : "0.00";
+
+            const shouldScroll = p.stocks && p.stocks.length > 4;
+
+            return (
+              <div key={p.id} className="portfolio-card">
+                <div className="portfolio-header">
+                  <h2>{p.name}</h2>
+                </div>
+
+                <div className="portfolio-summary">
+                  <p><strong>Total Stocks:</strong> {p.stocks?.length || 0}</p>
+                  <p><strong>Portfolio Value:</strong> ${totalValue}</p>
+                  <p>
+                    <strong>Created:</strong>{" "}
+                    {p.created_at
+                      ? new Date(p.created_at).toLocaleDateString()
+                      : "N/A"}
+                  </p>
+                </div>
+
+                <div
+                  className={`stock-list-container ${
+                    shouldScroll ? "scrollable" : ""
+                  }`}
+                >
+                  {p.stocks && p.stocks.length > 0 ? (
+                    <ul className="stock-list">
+                      {p.stocks.map((s, i) => (
+                        <li key={i} className="stock-item">
+                          <span className="ticker">{s.ticker}</span>
+                          <span className="price">${s.price.toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="no-stocks">No stocks yet</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
