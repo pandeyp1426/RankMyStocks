@@ -31,7 +31,7 @@ export function Questionair() {
         data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
       } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
 
-
+      
       console.log("Fetched stock1:", data1);
       console.log("Fetched stock2:", data2);
       
@@ -41,6 +41,28 @@ export function Questionair() {
       console.error("Fetch error:", err);
     }
   };
+
+  async function fetchStockInfo(ticker) {
+  const res = await fetch(`${API_URL}/get-stock-info?ticker=${ticker}`);
+  const data = await res.json();
+  return data.info;
+}
+
+useEffect(() => {
+  async function loadInfo() {
+    if (stock1 && stock1.ticker && !stock1.info) {
+      const info = await fetchStockInfo(stock1.ticker);
+      setStock1(prev => ({ ...prev, info }));
+    }
+    if (stock2 && stock2.ticker && !stock2.info) {
+      const info = await fetchStockInfo(stock2.ticker);
+      setStock2(prev => ({ ...prev, info }));
+    }
+  }
+
+  loadInfo();
+}, [stock1?.ticker, stock2?.ticker]);
+
 
   //function to send questionQTY to backend
   const sendQuestionQTY = async () => {
@@ -54,7 +76,7 @@ export function Questionair() {
   } catch (err) {
     console.error("Error sending questionQTY:", err);
   }
-};
+  };
 
   const getNextPair = async () => {
     try {
@@ -145,7 +167,7 @@ export function Questionair() {
               role="button"
               tabIndex={0}
             >
-              <button className="info-icon" title={stock1.description}>ⓘ</button>
+              <button className="info-icon" title={stock1.info}>ⓘ</button>
               <h3 className="stock-ticker">{stock1.ticker}</h3>
               <p className="stock-name">{stock1.name}</p>
               <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
@@ -162,7 +184,7 @@ export function Questionair() {
               role="button"
               tabIndex={0}
             >
-              <button className="info-icon" title={stock2.description}>ⓘ</button>
+              <button className="info-icon" title={stock2.info}>ⓘ</button>
               <h3 className="stock-ticker">{stock2.ticker}</h3>
               <p className="stock-name">{stock2.name}</p>
               <p className="stock-price">${Number(stock2.price).toFixed(2)}</p>

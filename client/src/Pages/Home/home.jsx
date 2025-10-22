@@ -1,13 +1,46 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Popup } from "../../Components/CreatePopUp/popup.jsx";
 import { PortfolioName } from "../../Components/CreatePopUp/portfolioName.jsx";
 import { NumSlider } from "../../Components/CreatePopUp/numSlider.jsx";
+
 import "./home.css";
 import appPreview from "../../assets/img/logo.png"; // you can replace this with any preview image
+import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
 
 export function Home() {
   const [buttonPopup, setButtonPopup] = useState(false);
+  const [totalPortfolioValue, setTotalPortfolioValue] = useState(0);
+  const [portfolios, setPortfolios] = useState([]);
+  const [totalStocks, setTotalStocks] = useState(0);
+  const [timeFrame, setTimeFrame] = useState("1D");
+
+  // ✅ Fetch all portfolios and calculate total
+  useEffect(() => {
+    async function fetchPortfolioSummary() {
+      try {
+        const response = await fetch("http://127.0.0.1:5001/api/portfolios");
+        const data = await response.json();
+
+        let totalValue = 0;
+        let stockCount = 0;
+
+        data.forEach((p) => {
+          p.stocks.forEach((s) => {
+            totalValue += parseFloat(s.price || 0);
+            stockCount += 1;
+          });
+        });
+
+        setTotalPortfolioValue(totalValue);
+        setTotalStocks(stockCount);
+      } catch (error) {
+        console.error("Error fetching portfolios:", error);
+      }
+    }
+
+    fetchPortfolioSummary();
+  }, []);
 
   function nameCheck() {}
 
@@ -35,11 +68,7 @@ export function Home() {
             <h3 className="popup-title">Enter Portfolio Name</h3>
             <PortfolioName />
             <NumSlider />
-            <Link to="/questionair">
-              <button onClick={nameCheck} className="save-btn">
-                Save
-              </button>
-            </Link>
+            <NameCheck/>
           </Popup>
         </div>
 
@@ -52,6 +81,40 @@ export function Home() {
           />
           <div className="floating ball"></div>
           <div className="floating glow"></div>
+        </div>
+      </section>
+       {/* ---------- MAIN PORTFOLIO SECTION ---------- */}
+      <section className="main-portfolio">
+        <div className="portfolio-card">
+          <div className="portfolio-header">
+            <h2>Portfolio</h2>
+            <select
+              className="timeframe-select"
+              value={timeFrame}
+              onChange={(e) => setTimeFrame(e.target.value)}
+            >
+              <option value="1D">1D</option>
+              <option value="1W">1W</option>
+              <option value="1M">1M</option>
+              <option value="1Y">1Y</option>
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+
+          <h1 className="portfolio-value">
+            ${totalPortfolioValue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </h1>
+          <p className="portfolio-sub">
+            # of Stocks: {totalStocks}
+          </p>
+
+          <div className="portfolio-chart">
+            {/* Placeholder chart - replace with Recharts later */}
+            <div className="chart-placeholder">Chart showing {timeFrame} data</div>
+          </div>
         </div>
       </section>
     </div>

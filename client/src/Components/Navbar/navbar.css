@@ -1,74 +1,44 @@
-<<<<<<< HEAD
-.top-nav {
-  position: fixed;       
-  top: 20px;             
-  left: 20px;           
-  display: flex;
-  gap: 20px;             
-  z-index: 1000;         
-}
-.top-nav a {
-  color: white;          
-  text-decoration: none; 
-  font-weight: 600;
-  font-size: 16px;
-  transition: color 0.2s ease;
-}
-
-.top-nav a:hover {
-  color: #ffd700;       
-}
-
-.top-nav button {
-  background-color: white; 
-  color: black;            
-  border: none;            
-  border-radius: 8px;      
-  padding: 8px 16px;       
-  cursor: pointer;
-  font-weight: 600;
- 
-}
-
-.top-nav button:hover {
- 
-  transform: scale(1.05);
-=======
 /* General Navbar Styling */
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: 72px;
+  height: 82px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 80px;
+  padding: 0 2rem;
   background: linear-gradient(90deg, #7163f1, #9b6df8);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1000;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
-
+/* Ensure items never get cut off */
+.navbar * {
+  box-sizing: border-box;
+}
 .navbar-left {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .navbar-logo {
-  width: 42px;
-  height: 42px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
   border-radius: 6px;
 }
+
 .navbar-home-link {
   display: flex;
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  color: inherit; /* keeps the same color as your navbar text */
+  color: inherit; 
 }
+
 .navbar-title {
   color: #fff;
   font-size: 1.7rem;
@@ -76,14 +46,13 @@
   margin: 0;
 }
 
-/* Right-side links and buttons */
 .navbar-right {
   display: flex;
   align-items: center;
   gap: 2rem;
+ font-weight: 600;
 }
 
-/* Normal Nav Links */
 .navbar-link {
   color: #fff;
   text-decoration: none;
@@ -95,44 +64,41 @@
   color: #facc15;
 }
 
-/* Auth Buttons */
 .auth-buttons {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-left: 1rem;
+  gap: 0.5rem;
 }
 
 .login-btn,
-.signup-btn {
+.logout-btn {
   text-decoration: none;
   font-weight: 600;
   padding: 8px 18px;
   border-radius: 25px;
   transition: all 0.25s ease-in-out;
   font-size: 0.95rem;
+  cursor: pointer;
 }
 
-/* Outline Log In */
 .login-btn {
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
-  color: #fff;
-}
-
-.login-btn:hover {
-  border-color: #00f9ff;
-  color: #00f9ff;
-}
-
-/* Solid Sign Up */
-.signup-btn {
   background-color: #00f9ff;
   color: #000;
   border: 1.5px solid #00f9ff;
 }
 
-.signup-btn:hover {
+.login-btn:hover {
   background-color: #00e0e0;
   border-color: #00e0e0;
->>>>>>> Sprint1_Pradeep
+}
+
+.logout-btn {
+  background-color: #00f9ff;
+  color: #000;
+  border: 1.5px solid #00f9ff;
+}
+
+.logout-btn:hover {
+  background-color: #00e0e0;
+  border-color: #00e0e0;
 }

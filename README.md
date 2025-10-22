@@ -45,6 +45,10 @@ Assuming you’re in the rank my stocks folder open a new terminal.
 
 Change the terminal to GitBash 
 
+Create a .env file in client and add dependencies in  
+     REACT_APP_AUTH0_DOMAIN=dev-xnrub1mhoq8kojoy.us.auth0.com 
+     REACT_APP_AUTH0_CLIENT_ID=SDDSZVTGaXylIWeF5f4cY99oUYa0Kjrh 
+
 Type (“cd client”) 
 
 Type (“npm install”) 
