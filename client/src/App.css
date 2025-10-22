@@ -1,9 +1,15 @@
-@import "tailwindcss";
+/* -----------------------------
+   Global App Container
+------------------------------ */
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
   text-align: center;
+
+  /* Removed padding that caused layout shifting */
+  /* padding: 2rem; */
+
+  /* Global color palette */
   --nyanza: #d8f3dcff;
   --celadon: #b7e4c7ff;
   --celadon-2: #95d5b2ff;
@@ -15,6 +21,20 @@
   --dark-green: #081c15ff;
 }
 
+/* -----------------------------
+   Navbar Spacing Fix
+------------------------------ */
+.page-content {
+  margin-top: 100px;   /* pushes content below fixed navbar */
+  min-height: 100vh;
+  text-align: left;    /* prevents everything from centering */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* -----------------------------
+   Animated Typing Text (yours)
+------------------------------ */
 .text {
   font-style: normal;
   font-size: 2.2em;
@@ -31,10 +51,12 @@
     typing-text 1.1s steps(14, end) 0s forwards,
     cursor 0.4s step-end infinite alternate 2.5s;
 }
+
 @keyframes typing-name {
   from { width: 0 }
   to { width: 16ch }
 }
+
 @keyframes typing-text {
   0% {
     width: 0;
@@ -46,3 +68,17 @@
   }
 }
 
+/* -----------------------------
+   Optional Global Styles
+------------------------------ */
+body {
+  margin: 0;
+  background-color: #1a1a1a;
+  font-family: "Inter", Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Make scroll smooth across all pages */
+html {
+  scroll-behavior: smooth;
+}
