@@ -31,7 +31,7 @@ export function Questionair() {
         data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
       } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
 
-
+      
       console.log("Fetched stock1:", data1);
       console.log("Fetched stock2:", data2);
       

@@ -1,26 +1,32 @@
+/* General Navbar Styling */
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: 72px;
+  height: 82px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 80px;
+  padding: 0 2rem;
   background: linear-gradient(90deg, #7163f1, #9b6df8);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1000;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
-
+/* Ensure items never get cut off */
+.navbar * {
+  box-sizing: border-box;
+}
 .navbar-left {
   display: flex;
   align-items: center;
 }
 
 .navbar-logo {
-  width: 42px;
-  height: 42px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
   border-radius: 6px;
 }
@@ -43,7 +49,8 @@
 .navbar-right {
   display: flex;
   align-items: center;
-  gap: 1rem; 
+  gap: 2rem;
+ font-weight: 600;
 }
 
 .navbar-link {

@@ -2,12 +2,18 @@ from flask import Flask, session, jsonify, request
 import mysql.connector
 import urllib.request
 import os
+import random
+import csv
 from flask_cors import CORS
 from dotenv import load_dotenv
 import urllib.parse
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+
 import stocks
 
-load_dotenv()  # Load environment variables from a .env file
+load_dotenv()  # Load    environment variables from a .env file
+OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 CORS(app, supports_credentials=True)
@@ -69,6 +75,31 @@ def get_pair_data():
 @app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
+@app.route("/get-stock-info", methods=["GET"])
+def get_stock_info():
+    with open("ticker_list.csv", mode='r') as file:
+        reader = csv.reader(file)
+        stock_list = list(reader)
+
+    stock = random.choice(stock_list)[0] if stock_list else None
+
+    model = ChatOpenAI(
+        temperature=0,
+        model_name="gpt-3.5-turbo",
+        api_key=OPEN_AI_API_KEY
+    )
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 100 characters.")
+    ])
+
+    chain = prompt | model
+    response = chain.invoke({"stock": stock})
+
+    return jsonify({
+        "stock": stock,
+        "info": response.content
+    })
 
 
 @app.route("/init", methods=["POST"])
