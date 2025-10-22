@@ -37,6 +37,25 @@ def random_stock_api():
 def home():
     return "Welcome to RankMyStocks API!"
 
+
+@app.route("/init", methods=["POST"])
+def initialize():
+    #here we will initilaze the queue with N sotck pairs 
+    data = request.get_json()
+    questionQTY = data.get("questionQTY", 10) #gets questionQTY from frontend and defaults to 10 if not provided
+
+
+
+@app.route("/next", methods=["GET"])
+def get_next_pair():
+    #this function will get the next stock pair from the queue
+
+
+@app.route("/pick", methods=["POST"])
+def pick_stock():
+    #this function will pick the stock from the pair and add it to the portfolio
+
+
 # ---- database test ----
 @app.route("/db-test")
 # Test database connection
@@ -101,8 +120,6 @@ def create_portfolio():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
-
 
 # ---- list portfolios ----
 @app.route("/api/portfolios", methods=["GET"])

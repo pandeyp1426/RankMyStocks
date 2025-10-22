@@ -33,9 +33,9 @@ def get_stock_price(ticker):
     previousDate = currentDate - timedelta(days=1)
     day_int = previousDate.weekday()
     if day_int == 5:
-        currentDate = currentDate - timedelta(days=1)
+        previousDate = previousDate - timedelta(days=1)
     if day_int == 6:
-        currentDate = currentDate - timedelta(days=2)
+        previousDate = previousDate - timedelta(days=2)
     print(day_int)
     dateString = previousDate.strftime("%Y-%m-%d")
 

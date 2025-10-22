@@ -15,6 +15,8 @@ export function Questionair() {
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
   
+  
+
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
     try {
@@ -99,6 +101,14 @@ export function Questionair() {
 
         <div className="stock-compare-container">
           {stock1 && (
+<<<<<<< HEAD:client/src/Pages/questionair.jsx
+            <>
+              <div className="stock-ticker">{stock1.ticker}</div>
+              <div className="stock-name">{stock1.name}</div>
+              <div className="stock-price">${Number(stock1.price).toFixed(2)}</div>
+              <div className="stock-description">{stock1.description}</div>
+            </>
+=======
             <div
               className="stock-card"
               onClick={() => handlePick(stock1)}
@@ -111,11 +121,20 @@ export function Questionair() {
               <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
               <p className="stock-change positive">+2.34 (+1.35%)</p>
             </div>
+>>>>>>> Sprint1_Pradeep:client/src/Pages/Home/questionair.jsx
           )}
 
           <div className="vs-text">VS</div>
 
           {stock2 && (
+<<<<<<< HEAD:client/src/Pages/questionair.jsx
+            <>
+              <div className="stock-ticker">{stock2.ticker}</div>
+              <div className="stock-name">{stock2.name}</div>
+              <div className="stock-price">{stock2.price ? `$${Number(stock2.price).toFixed(2)}` : "N/A"}</div>
+              <div className="stock-description">{stock2.description}</div>
+            </>
+=======
             <div
               className="stock-card"
               onClick={() => handlePick(stock2)}
@@ -128,6 +147,7 @@ export function Questionair() {
               <p className="stock-price">${Number(stock2.price).toFixed(2)}</p>
               <p className="stock-change negative">-1.23 (-1.23%)</p>
             </div>
+>>>>>>> Sprint1_Pradeep:client/src/Pages/Home/questionair.jsx
           )}
         </div>
 
