@@ -56,14 +56,34 @@ export function Questionair() {
   }
 };
 
+  const getNextPair = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/next`, {
+        withCredentials: true, //includes session cookies
+      });
+
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        //server responsds with error status
+        throw new Error(error.response.data.message || 'Failed to get next pair');
+      } else if (error.request) {
+        //request made but no response recived
+        throw new Error('No response from server');
+      } else {
+        //somthing else happened
+        throw new Error(error.message)
+      }
+    }
+  };
 
   // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
       sendQuestionQTY();
       fetchTwoStocks();
+      getNextPair(); //this will get the initla stock pair
       didFetchRef.current = true;
-      //Next(); //this will get the initla stock pair
     }
   }, [API_URL]);
 

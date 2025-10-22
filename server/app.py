@@ -10,7 +10,14 @@ import stocks
 load_dotenv()  # Load environment variables from a .env file
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
-CORS(app, supports_credentials=True)
+
+#required for cross origin session cookies
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True if using HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+
+
+CORS(app, supports_credentials=True, origins=['http://localhost:5173'])
 from stocks import random_stock, get_stock_price, get_company_name, get_description
 
 # ---- random stock ----
@@ -65,7 +72,6 @@ def get_pair_data():
         return jsonify({"error": str(e)}), 500
 
 
-
 @app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
@@ -73,6 +79,13 @@ def home():
 
 @app.route("/init", methods=["POST"])
 def initialize():
+    #init session testing
+    print("=" * 50)
+    print("INIT ROUTE CALLED")
+    print(f"SECRET_KEY set: {bool(app.config.get('SECRET_KEY'))}")
+    print(f"Request origin: {request.headers.get('Origin')}")
+    print(f"Request has cookies: {request.cookies}")
+    
     #receives the question quantity and portfolio name from user 
     data = request.get_json()
     questionQTY = data.get("questionQTY")
@@ -80,21 +93,45 @@ def initialize():
 
     #initializes the stocks queue for the session
     stock_list = stocks.generate_ticker_list(questionQTY * 2)
-    portfolio = []
     session['stock_list'] = stock_list
+    
+    portfolio = []
     session['portfolio'] = portfolio
     session['questionQTY'] = questionQTY
+    session.modified = True
+
+    #end of init testing
+    print(f"Session contents: {dict(session)}")
+    print(f"Session has stock_list: {'stock_list' in session}")
+    print("=" * 50)
 
     return jsonify({
         "status": "initialized", 
         "questionQTY": questionQTY, 
         "portfolioName": portolfioName,
-        "stock_list": stock_list
+        "stock_list": session['stock_list']
     })
 
 
 @app.route("/next", methods=["GET"])
 def get_next_pair():
+    
+    #next route testing
+    print("=" * 50)
+    print("NEXT ROUTE CALLED")
+    print(f"Request origin: {request.headers.get('Origin')}")
+    print(f"Request cookies: {request.cookies}")
+    print(f"Session contents: {dict(session)}")
+    print(f"Session has stock_list: {'stock_list' in session}")
+    print("=" * 50)
+    
+    
+    
+    if 'stock_list' not in session:
+        return jsonify({
+            "status": "error",
+            "message": "Stock list not in session"
+        }), 400
     stock_list = session['stock_list']
     stock_queue = stocks.list_to_queue(stock_list)
     stock_pair = []
