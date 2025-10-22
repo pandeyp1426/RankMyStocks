@@ -4,7 +4,7 @@ import { PortfolioName } from "../../Components/CreatePopUp/portfolioName.jsx";
 import { NumSlider } from "../../Components/CreatePopUp/numSlider.jsx";
 import "./home.css";
 import appPreview from "../../assets/img/logo.png"; // you can replace this with any preview image
-import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx";
+import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
 
 export function Home() {
   const [buttonPopup, setButtonPopup] = useState(false);

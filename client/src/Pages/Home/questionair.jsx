@@ -63,6 +63,7 @@ export function Questionair() {
       sendQuestionQTY();
       fetchTwoStocks();
       didFetchRef.current = true;
+      //Next(); //this will get the initla stock pair
     }
   }, [API_URL]);
 
@@ -72,6 +73,7 @@ export function Questionair() {
     savePortfolio(stock); // save to backend
     fetchTwoStocks(); // refresh new options
     fetchTwoStocks();
+    //next(); //this will get the next pair once user picks a stock
   };
 
   // reroll without picking

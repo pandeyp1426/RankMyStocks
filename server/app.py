@@ -80,28 +80,31 @@ def initialize():
     #initializes the stocks queue for the session
     stock_list = stocks.generate_ticker_list(questionQTY * 2)
     portfolio = []
-    session['stock_queue'] = stock_list
+    session['stock_list'] = stock_list
     session['portfolio'] = portfolio
+    session['questionQTY'] = questionQTY
 
     return jsonify({
         "status": "initialized", 
         "questionQTY": questionQTY, 
-        "portfolioName": portolfioName
+        "portfolioName": portolfioName,
+        "stock_list": stock_list
     })
 
 
 @app.route("/next", methods=["GET"])
 def get_next_pair():
-    stock_queue = session.get('stock_queue', [])
-    stock_queue = stocks.list_to_queue(stock_queue)
+    stock_list = session['stock_list']
+    stock_queue = stocks.list_to_queue(stock_list)
     stock_pair = []
 
     if stock_queue.qsize() >= 2:
         stock1 = stock_queue.get()
         stock2 = stock_queue.get()
-        stock_pair = [stock1, stock2]
-        session['stock_queue'] = stocks.queue_to_list(stock_queue)
-        session['stock_pair'] = stock_pair
+        stock_list = stocks.queue_to_list(stock_queue)
+        session['stock_list'] = stock_list
+        session['stock1'] = stock1
+        session['stock2'] = stock2
     else:
         return jsonify({
             "status": "error",
@@ -110,7 +113,8 @@ def get_next_pair():
 
     return jsonify({
         "status": "success",
-        "stock_pair": stock_pair
+        "stock1": stock1,
+        "stock2": stock2
     })
 
 
