@@ -46,13 +46,13 @@ def initialize():
 
 
 
-@app.route("/next", methods=["GET"])
-def get_next_pair():
+#@app.route("/next", methods=["GET"])
+#def get_next_pair():
     #this function will get the next stock pair from the queue
 
 
-@app.route("/pick", methods=["POST"])
-def pick_stock():
+#@app.route("/pick", methods=["POST"])
+#def pick_stock():
     #this function will pick the stock from the pair and add it to the portfolio
 
 
