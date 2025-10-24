@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./Questionair.css";
 
+axios.defaults.withCredentials = true;
+
 
 export function Questionair() {
   //Fetching values from store and assigning them for use
@@ -85,11 +87,9 @@ useEffect(() => {
 
   const getNextPair = async () => {
     try {
-      const response = await axios.get(`${API_URL}/next`, {
-        withCredentials: true, //includes session cookies
-      });
-
+      const response = await axios.get(`${API_URL}/next`);
       return response.data;
+
     } catch (error) {
       if (error.response) {
         //server responsds with error status
@@ -104,6 +104,11 @@ useEffect(() => {
     }
   };
 
+  const pickStock = async () =>{
+    //this will pick the stock and send it to the backend
+
+  }
+
   // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
@@ -115,12 +120,13 @@ useEffect(() => {
 
   // when user picks a stock
   const handlePick = (stock) => {
-    getNextPair();
     setSelectedStocks([...selectedStocks, stock]);
     savePortfolio(stock); // save to backend
     fetchTwoStocks(); // refresh new options
     fetchTwoStocks();
-    //next(); //this will get the next pair once user picks a stock
+    getNextPair(); //this will move to the next pair once user picks a stock
+    //fetchStockPair(); this will get the next pairs data from backend
+    //pick(); //this will pick the stock and save it to the portfolio
   };
 
   // reroll without picking

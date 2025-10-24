@@ -47,6 +47,11 @@ def random_stock_api():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/get-stock-data", methods=["GET"])
+def get_stock_data():
+    
+    return 0;
+
 @app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
@@ -86,9 +91,14 @@ def initialize():
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
     stock_list = stocks.generate_ticker_list(questionQTY * 2)
+    portfolio = []
+    
     
     #set session variables 
-    session["Test"] = "test_session"
+    session["stock_list"] = stock_list
+    session["portfolio"] = portfolio
+    session["questionQTY"] = questionQTY
+    
     
     response = jsonify({
         "status": "initialized", 
@@ -102,14 +112,51 @@ def initialize():
 
 @app.route("/next", methods=["GET"])
 def get_next_pair():
-    test = session.get("Test", "No sesssion created")
+    try:
+        if 'stock_list' not in session:
+            return jsonify({
+                "status": "error",
+                "message": "Stock list not in session"
+            }), 400
+        else:
+            stock_list = session.get("stock_list", "No stock List")
+            stock_pair = []
+            if len(stock_list) >= 2:
+                stock1 = stock_list.pop(0)
+                stock2 = stock_list.pop(0)
+                
+            elif len(stock_pair) == 0:
+                #do somthing to end the stock picking
+                return jsonify({
+                    "status": "error",
+                    "message": "list is empty"
+                }), 400
+            
+        return jsonify({
+            "status": "success",
+            "stock1": stock1,
+            "stock2": stock2
+        })
     
-    return f"The session is: {test}"
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/pick", methods=["POST"])
 def pick_stock():
-    #this function will pick the stock from the pair and add it to the portfolio
+    #this function recives the users picked stock from the frontend and stores it in the portfolio list
+    data = request.get_json()
+    stock_pick = data.get("stock_pick")
+    portfolio = session.get("portfolio", "no portolio")
+    questionQTY = session.get("questionQTY", "None")
+    portfolio.append(stock_pick)
+    
+    if len(portfolio) == questionQTY:
+        #send list to databse
+        return jsonify({
+            "status": "success",
+            "portfolio": portfolio
+        })
 
     return 0
 
@@ -229,6 +276,6 @@ if __name__ == "__main__":
     app.run(
         debug=True,
         host="localhost",
-        port=5001
+        port=5000
     )
 
