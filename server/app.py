@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 import urllib.parse
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-
 import stocks
 
 load_dotenv()  # Load    environment variables from a .env file
@@ -18,12 +17,13 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 
 #required for cross origin session cookies
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True if using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 
-CORS(app, supports_credentials=True, origins=['http://localhost:5173'])
+CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 from stocks import random_stock, get_stock_price, get_company_name, get_description
 
 # ---- random stock ----
@@ -46,41 +46,12 @@ def random_stock_api():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/pair-data")
-def get_pair_data():
-    try:
-        ticker1 = session.get('stock_pair', [None, None])[0]
-        if not ticker1:
-            return jsonify({"error": "No stock1 found"}), 500
-        price1 = get_stock_price(ticker1)
-        name1 = get_company_name(ticker1)
-        description1 = get_description(ticker1)
-        
-        ticker2 = session.get('stock_pair', [None, None])[1]
-        if not ticker2:
-            return jsonify({"error": "No stock2 stock found"}), 500
-        price2 = get_stock_price(ticker2)
-        name2 = get_company_name(ticker2)
-        description2 = get_description(ticker2)
-
-        return jsonify({
-            "ticker1": ticker1,
-            "name1": name1,
-            "price1": float(price1) if price1 else None,
-            "description1": description1,
-
-            "ticker2": ticker2,
-            "name2": name2,
-            "price2": float(price2) if price2 else None,
-            "description2": description2
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 @app.route("/")   
 def home():
     return "Welcome to RankMyStocks API!"
+
+
 @app.route("/get-stock-info", methods=["GET"])
 def get_stock_info():
     with open("ticker_list.csv", mode='r') as file:
@@ -110,81 +81,30 @@ def get_stock_info():
 
 @app.route("/init", methods=["POST"])
 def initialize():
-    #init session testing
-    print("=" * 50)
-    print("INIT ROUTE CALLED")
-    print(f"SECRET_KEY set: {bool(app.config.get('SECRET_KEY'))}")
-    print(f"Request origin: {request.headers.get('Origin')}")
-    print(f"Request has cookies: {request.cookies}")
-    
     #receives the question quantity and portfolio name from user 
     data = request.get_json()
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
-    #initializes the stocks queue for the session
     stock_list = stocks.generate_ticker_list(questionQTY * 2)
-    session['stock_list'] = stock_list
     
-    portfolio = []
-    session['portfolio'] = portfolio
-    session['questionQTY'] = questionQTY
-    session.modified = True
-
-    #end of init testing
-    print(f"Session contents: {dict(session)}")
-    print(f"Session has stock_list: {'stock_list' in session}")
-    print("=" * 50)
-
-    return jsonify({
+    #set session variables 
+    session["Test"] = "test_session"
+    
+    response = jsonify({
         "status": "initialized", 
         "questionQTY": questionQTY, 
         "portfolioName": portolfioName,
-        "stock_list": session['stock_list']
+        "stock_list": stock_list
     })
+
+    return response
 
 
 @app.route("/next", methods=["GET"])
 def get_next_pair():
+    test = session.get("Test", "No sesssion created")
     
-    #next route testing
-    print("=" * 50)
-    print("NEXT ROUTE CALLED")
-    print(f"Request origin: {request.headers.get('Origin')}")
-    print(f"Request cookies: {request.cookies}")
-    print(f"Session contents: {dict(session)}")
-    print(f"Session has stock_list: {'stock_list' in session}")
-    print("=" * 50)
-    
-    
-    
-    if 'stock_list' not in session:
-        return jsonify({
-            "status": "error",
-            "message": "Stock list not in session"
-        }), 400
-    stock_list = session['stock_list']
-    stock_queue = stocks.list_to_queue(stock_list)
-    stock_pair = []
-
-    if stock_queue.qsize() >= 2:
-        stock1 = stock_queue.get()
-        stock2 = stock_queue.get()
-        stock_list = stocks.queue_to_list(stock_queue)
-        session['stock_list'] = stock_list
-        session['stock1'] = stock1
-        session['stock2'] = stock2
-    else:
-        return jsonify({
-            "status": "error",
-            "message": "Not enough stocks in the queue"
-        }), 400
-
-    return jsonify({
-        "status": "success",
-        "stock1": stock1,
-        "stock2": stock2
-    })
-
+    return f"The session is: {test}"
 
 
 @app.route("/pick", methods=["POST"])
@@ -192,6 +112,7 @@ def pick_stock():
     #this function will pick the stock from the pair and add it to the portfolio
 
     return 0
+
 
 @app.route("/db-test")
 def db_test():

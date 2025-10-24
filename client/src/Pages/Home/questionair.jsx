@@ -15,7 +15,7 @@ export function Questionair() {
   const didFetchRef = useRef(false);
 
    // 👇 API URL comes from .env (client/.env)
-  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5001";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
@@ -70,7 +70,12 @@ useEffect(() => {
       const response = await axios.post(`${API_URL}/init`, {
         portfolioName: portfolioName,
         questionQTY: questionQTY
-    });
+    },
+    {
+      withCredentials: true
+    }
+  );
+
     console.log("Successfully sent questionQTY:", response.data);
     return response.data;
   } catch (err) {
@@ -104,13 +109,13 @@ useEffect(() => {
     if (!didFetchRef.current) {
       sendQuestionQTY();
       fetchTwoStocks();
-      getNextPair(); //this will get the initla stock pair
       didFetchRef.current = true;
     }
   }, [API_URL]);
 
   // when user picks a stock
   const handlePick = (stock) => {
+    getNextPair();
     setSelectedStocks([...selectedStocks, stock]);
     savePortfolio(stock); // save to backend
     fetchTwoStocks(); // refresh new options
