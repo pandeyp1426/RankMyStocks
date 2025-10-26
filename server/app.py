@@ -3,6 +3,7 @@ import mysql.connector
 import urllib.request
 import os
 import random
+import time
 import csv
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -47,10 +48,40 @@ def random_stock_api():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/get-stock-data", methods=["GET"])
+@app.route("/api/get-stock-data", methods=["GET"])
 def get_stock_data():
-    
-    return 0;
+    print("=" * 50)
+    print("GET-STOCK-DATA CALLED")
+    print("=" * 50)
+
+    try:
+        ticker1 = session.get("stock1", "No stock1 in session")
+        if not ticker1:
+            return jsonify({"error": "No stock found from the list"}), 500
+
+        price1 = get_stock_price(ticker1)
+        name1 = get_company_name(ticker1)
+        description1 = get_description(ticker1)
+
+        ticker2 = session.get("stock2", "No stock2 in session")
+        price2 = get_stock_price(ticker2)
+        name2 = get_company_name(ticker2)
+        description2 = get_description(ticker2)
+
+        return jsonify({
+            "ticker1": ticker1,
+            "name1": name1,
+            "price1": float(price1) if price1 else None,
+            "description1": description1,
+
+            "ticker2": ticker2,
+            "name2": name2,
+            "price2": float(price2) if price2 else None,
+            "description2": description2
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/")   
 def home():
@@ -86,6 +117,11 @@ def get_stock_info():
 
 @app.route("/init", methods=["POST"])
 def initialize():
+    print("=" * 50)
+    print("INIT ROUTE CALLED")
+    print("=" * 50)
+
+
     #receives the question quantity and portfolio name from user 
     data = request.get_json()
     questionQTY = data.get("questionQTY")
@@ -112,6 +148,11 @@ def initialize():
 
 @app.route("/next", methods=["GET"])
 def get_next_pair():
+    print("=" * 50)
+    print("NEXT ROUTE CALLED")
+    print("=" * 50)
+
+
     try:
         if 'stock_list' not in session:
             return jsonify({
@@ -124,8 +165,12 @@ def get_next_pair():
             if len(stock_list) >= 2:
                 stock1 = stock_list.pop(0)
                 stock2 = stock_list.pop(0)
+                stock_pair = [stock1, stock2]
+                session["stock_list"] = stock_list
+                session["stock1"] = stock1
+                session["stock2"] = stock2
                 
-            elif len(stock_pair) == 0:
+            elif len(stock_list) == 0:
                 #do somthing to end the stock picking
                 return jsonify({
                     "status": "error",
@@ -134,8 +179,8 @@ def get_next_pair():
             
         return jsonify({
             "status": "success",
-            "stock1": stock1,
-            "stock2": stock2
+            "stock_list": stock_list,
+            "stock_pair": stock_pair
         })
     
     except Exception as e:

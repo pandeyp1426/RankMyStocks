@@ -14,6 +14,8 @@ export function Questionair() {
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
   const [selectedStocks, setSelectedStocks] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const didFetchRef = useRef(false);
 
    // 👇 API URL comes from .env (client/.env)
@@ -66,7 +68,7 @@ useEffect(() => {
 }, [stock1?.ticker, stock2?.ticker]);
 
 
-  //function to send questionQTY to backend
+  //function to send questionQTY and portfolio name to backend
   const sendQuestionQTY = async () => {
     try {
       const response = await axios.post(`${API_URL}/init`, {
@@ -85,6 +87,7 @@ useEffect(() => {
   }
   };
 
+  //function to get next pair from backend
   const getNextPair = async () => {
     try {
       const response = await axios.get(`${API_URL}/next`);
@@ -104,34 +107,86 @@ useEffect(() => {
     }
   };
 
-  const pickStock = async () =>{
-    //this will pick the stock and send it to the backend
+ //function to get stock pair data from backend to display to users
+const fetchStockData = async () => {
+  setLoading(true);
+  setError(null);
 
+  try {
+    const response = await axios.get(`${API_URL}/api/get-stock-data`, {
+      withCredentials: true
+    });
+    
+    const data = response.data;
+
+    //set stock1 with data from flask session
+    if(data.ticker1) {
+      setStock1({
+        ticker: data.ticker1,
+        name: data.name1,
+        price: data.price1,
+        info: data.description1
+      })
   }
+
+    //set stock2 with data from flask session
+    if(data.ticker2) {
+      setStock2({
+        ticker: data.ticker2,
+        name: data.name2,
+        price: data.price2,
+        description: data.description2
+      });
+  }
+
+  console.log("Fetched stock data:", data);
+
+} catch (err) {
+    console.error("Error fetching stock data from session:", err);
+    setError(err.response?.data?.error || err.message);
+} finally {
+    setLoading(false);
+  }
+};
+
 
   // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
       sendQuestionQTY();
-      fetchTwoStocks();
+      fetchStockData();
+
+      //fetchTwoStocks();
       didFetchRef.current = true;
     }
   }, [API_URL]);
 
   // when user picks a stock
-  const handlePick = (stock) => {
+  const handlePick = async (stock) => {
     setSelectedStocks([...selectedStocks, stock]);
     savePortfolio(stock); // save to backend
-    fetchTwoStocks(); // refresh new options
-    fetchTwoStocks();
-    getNextPair(); //this will move to the next pair once user picks a stock
-    //fetchStockPair(); this will get the next pairs data from backend
+
+    try {
+      await getNextPair(); //get next pair from backend
+
+      await fetchStockData(); //fetch new stock data from backend
+
+    } catch (err) {
+      console.error("Error getting next pair:", err);
+      setError(err.message);
+      //await fetchTwoStocks(); //fallback to 
+    }
+
+
+    //fetchTwoStocks(); // refresh new options
+    //getNextPair(); //this will move to the next pair once user picks a stock
+    //getNextPair //this will get the next pairs data from backend
     //pick(); //this will pick the stock and save it to the portfolio
   };
 
   // reroll without picking
   const handleReroll = () => {
-    fetchTwoStocks();
+    //fetchTwoStocks();
   };
 
   // Save portfolio to backend
