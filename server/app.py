@@ -67,17 +67,38 @@ def get_stock_data():
         price2 = get_stock_price(ticker2)
         name2 = get_company_name(ticker2)
         description2 = get_description(ticker2)
+        
+        stock1 = ticker1
+        stock2 = ticker2
+
+        model = ChatOpenAI(
+        temperature=0,
+        model_name="gpt-3.5-turbo",
+        api_key=OPEN_AI_API_KEY
+        )
+
+        prompt = ChatPromptTemplate.from_messages([
+         ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 100 characters.")
+        ])
+
+        chain = prompt | model
+        response1 = chain.invoke({"stock": stock1})
+        response2 = chain.invoke({"stock": stock2})
+
+    
 
         return jsonify({
             "ticker1": ticker1,
             "name1": name1,
             "price1": float(price1) if price1 else None,
             "description1": description1,
-
+            "response1": response1.content,
+            
             "ticker2": ticker2,
             "name2": name2,
             "price2": float(price2) if price2 else None,
-            "description2": description2
+            "description2": description2,
+            "response2": response2.content,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -94,25 +115,7 @@ def get_stock_info():
         reader = csv.reader(file)
         stock_list = list(reader)
 
-    stock = random.choice(stock_list)[0] if stock_list else None
-
-    model = ChatOpenAI(
-        temperature=0,
-        model_name="gpt-3.5-turbo",
-        api_key=OPEN_AI_API_KEY
-    )
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 100 characters.")
-    ])
-
-    chain = prompt | model
-    response = chain.invoke({"stock": stock})
-
-    return jsonify({
-        "stock": stock,
-        "info": response.content
-    })
+    
 
 
 @app.route("/init", methods=["POST"])
