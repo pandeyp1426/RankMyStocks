@@ -186,21 +186,17 @@ def get_next_pair():
 
 @app.route("/pick", methods=["POST"])
 def pick_stock():
+    print("=" * 50)
+    print("PICK ROUTE CALLED")
+    print("=" * 50)
+    
     #this function recives the users picked stock from the frontend and stores it in the portfolio list
     data = request.get_json()
-    stock_pick = data.get("stock_pick")
-    portfolio = session.get("portfolio", "no portolio")
-    questionQTY = session.get("questionQTY", "None")
-    portfolio.append(stock_pick)
+    stock_pick = data.get("stockPick")
     
-    if len(portfolio) == questionQTY:
-        #send list to databse
-        return jsonify({
-            "status": "success",
-            "portfolio": portfolio
-        })
-
-    return 0
+    return jsonify({
+        "stockPick": stock_pick
+    })
 
 
 @app.route("/db-test")
