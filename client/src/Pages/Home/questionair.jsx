@@ -125,7 +125,7 @@ const fetchStockData = async () => {
         ticker: data.ticker1,
         name: data.name1,
         price: data.price1,
-        description: data.description1
+        description: data.response1
       })
   }
 
@@ -135,7 +135,7 @@ const fetchStockData = async () => {
         ticker: data.ticker2,
         name: data.name2,
         price: data.price2,
-        description: data.description2
+        description: data.response2
       });
   }
 
@@ -234,7 +234,7 @@ const fetchStockData = async () => {
               role="button"
               tabIndex={0}
             >
-              <button className="info-icon" title={stock1.info}>ⓘ</button>
+              <button className="info-icon" title={stock1.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock1.ticker}</h3>
               <p className="stock-name">{stock1.name}</p>
               <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
@@ -251,7 +251,7 @@ const fetchStockData = async () => {
               role="button"
               tabIndex={0}
             >
-              <button className="info-icon" title={stock2.info}>ⓘ</button>
+              <button className="info-icon" title={stock2.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock2.ticker}</h3>
               <p className="stock-name">{stock2.name}</p>
               <p className="stock-price">${Number(stock2.price).toFixed(2)}</p>
