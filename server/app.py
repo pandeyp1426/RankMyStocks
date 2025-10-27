@@ -77,7 +77,7 @@ def get_stock_data():
         )
 
         prompt = ChatPromptTemplate.from_messages([
-         ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 100 characters.")
+         ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 200 characters.")
         ])
 
         chain = prompt | model
