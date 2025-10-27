@@ -153,8 +153,9 @@ const fetchStockData = async () => {
   // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
-      sendQuestionQTY();
-      fetchStockData();
+      sendQuestionQTY()
+        .then(() => getNextPair())
+        .then(() => fetchStockData())
 
       //fetchTwoStocks();
       didFetchRef.current = true;
