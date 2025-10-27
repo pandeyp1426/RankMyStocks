@@ -150,6 +150,24 @@ const fetchStockData = async () => {
 };
 
 
+const sendStockPick = async (stock) => {
+    try {
+      const response = await axios.post(`${API_URL}/pick`, {
+        stockPick: stock
+    },
+    {
+      withCredentials: true
+    }
+  );
+
+    console.log("Successfully sent stocPick:", response.data);
+    return response.data;
+  } catch (err) {
+    console.error("Error sending stockPick:", err);
+  }
+  };
+
+
   // only run once on mount
   useEffect(() => {
     if (!didFetchRef.current) {
@@ -165,12 +183,13 @@ const fetchStockData = async () => {
   // when user picks a stock
   const handlePick = async (stock) => {
     setSelectedStocks([...selectedStocks, stock]);
-    savePortfolio(stock); // save to backend
+    savePortfolio(stock); //save to backend
 
     try {
       await getNextPair(); //get next pair from backend
-
       await fetchStockData(); //fetch new stock data from backend
+      await sendStockPick(stock); //sends the stock picked to the backend
+
 
     } catch (err) {
       console.error("Error getting next pair:", err);
