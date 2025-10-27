@@ -108,11 +108,6 @@ def home():
     return "Welcome to RankMyStocks API!"
 
 
-@app.route("/get-stock-info", methods=["GET"])
-def get_stock_info():
-    with open("ticker_list.csv", mode='r') as file:
-        reader = csv.reader(file)
-        stock_list = list(reader)
 
     
 
