@@ -3,7 +3,7 @@ import { useState,useEffect } from "react";
 import { Popup } from "../../Components/CreatePopUp/popup.jsx";
 import { PortfolioName } from "../../Components/CreatePopUp/portfolioName.jsx";
 import { NumSlider } from "../../Components/CreatePopUp/numSlider.jsx";
-
+import { useSelector } from "react-redux";
 import "./home.css";
 import appPreview from "../../assets/img/logo.png"; // you can replace this with any preview image
 import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
@@ -14,12 +14,12 @@ export function Home() {
   const [portfolios, setPortfolios] = useState([]);
   const [totalStocks, setTotalStocks] = useState(0);
   const [timeFrame, setTimeFrame] = useState("1D");
-
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated); 
   // ✅ Fetch all portfolios and calculate total
   useEffect(() => {
     async function fetchPortfolioSummary() {
       try {
-        const response = await fetch("http://127.0.0.1:5001/api/portfolios");
+        const response = await fetch("http://127.0.0.1:5002/api/portfolios");
         const data = await response.json();
 
         let totalValue = 0;
@@ -42,7 +42,13 @@ export function Home() {
     fetchPortfolioSummary();
   }, []);
 
-  function nameCheck() {}
+  function handleClick() {
+    if (isAuthenticated) {
+      setButtonPopup(true);
+    } else {
+      alert("Please log in first!");
+    }
+  };
 
   return (
     <div className="home">
@@ -57,10 +63,7 @@ export function Home() {
             results and compare with others.
           </p>
 
-          <button
-            onClick={() => setButtonPopup(true)}
-            className="hero-button"
-          >
+          <button onClick={handleClick} className="hero-button">
             Create Portfolio
           </button>
 

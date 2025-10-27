@@ -1,4 +1,5 @@
 from flask import Flask, session, jsonify, request
+from components.getFrontend import get_frontend
 import mysql.connector
 import urllib.request
 import os
@@ -115,7 +116,7 @@ def get_stock_info():
     })
 
 
-@app.route("/init", methods=["POST"])
+@app.route("/", methods=["POST"])
 def initialize():
     print("=" * 50)
     print("INIT ROUTE CALLED")
@@ -315,6 +316,18 @@ def list_portfolios():
         return jsonify(list(portfolios.values()))
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/user_ID", methods=["POST"])
+def get_user_ID():
+    data = request.get_json()
+    user_ID = data.get("user_ID")
+
+    response = jsonify({
+        "status": "initialized", 
+        "user_ID": user_ID
+    })
+    
+    return response
 
 # ---- entrypoint ----
 if __name__ == "__main__":

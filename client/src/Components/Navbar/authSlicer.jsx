@@ -28,7 +28,3 @@ export const authSlice = createSlice({
 
 export const { setAuthData, clearAuthData } = authSlice.actions;
 export default authSlice.reducer;
-
-//How to grab this from other files
-//import { useSelector } from "react-redux";
-//const { userID, token } = useSelector((state) => state.auth);
