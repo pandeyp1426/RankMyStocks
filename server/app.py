@@ -25,7 +25,7 @@ app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
-from stocks import random_stock, get_stock_price, get_company_name, get_description
+from stocks import random_stock, get_stock_price, get_company_name
 
 # ---- random stock ----
 @app.route("/api/random-stock")
@@ -37,12 +37,11 @@ def random_stock_api():
 
         price = get_stock_price(ticker)
         name = get_company_name(ticker)
-        description = get_description(ticker)
+        
         return jsonify({
             "ticker": ticker,
             "name": name,
             "price": float(price) if price else None,
-            "description": description
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -61,12 +60,12 @@ def get_stock_data():
 
         price1 = get_stock_price(ticker1)
         name1 = get_company_name(ticker1)
-        description1 = get_description(ticker1)
+        
 
         ticker2 = session.get("stock2", "No stock2 in session")
         price2 = get_stock_price(ticker2)
         name2 = get_company_name(ticker2)
-        description2 = get_description(ticker2)
+        
         
         stock1 = ticker1
         stock2 = ticker2
@@ -91,13 +90,13 @@ def get_stock_data():
             "ticker1": ticker1,
             "name1": name1,
             "price1": float(price1) if price1 else None,
-            "description1": description1,
+            
             "response1": response1.content,
             
             "ticker2": ticker2,
             "name2": name2,
             "price2": float(price2) if price2 else None,
-            "description2": description2,
+            
             "response2": response2.content,
         })
     except Exception as e:
