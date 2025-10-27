@@ -19,7 +19,7 @@ export function Questionair() {
   const didFetchRef = useRef(false);
 
    // 👇 API URL comes from .env (client/.env)
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
   
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
@@ -125,7 +125,7 @@ const fetchStockData = async () => {
         ticker: data.ticker1,
         name: data.name1,
         price: data.price1,
-        info: data.description1
+        description: data.description1
       })
   }
 
