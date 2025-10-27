@@ -125,7 +125,7 @@ const fetchStockData = async () => {
         ticker: data.ticker1,
         name: data.name1,
         price: data.price1,
-        info: data.description1
+        description: data.description1
       })
   }
 
