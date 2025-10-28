@@ -6,6 +6,7 @@ import { NumSlider } from "../../Components/CreatePopUp/numSlider.jsx";
 
 import "./home.css";
 import appPreview from "../../assets/img/logo.png"; // you can replace this with any preview image
+import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
 
 export function Home() {
   const [buttonPopup, setButtonPopup] = useState(false);
@@ -67,11 +68,7 @@ export function Home() {
             <h3 className="popup-title">Enter Portfolio Name</h3>
             <PortfolioName />
             <NumSlider />
-            <Link to="/questionair">
-              <button onClick={nameCheck} className="save-btn">
-                Save
-              </button>
-            </Link>
+            <NameCheck/>
           </Popup>
         </div>
 

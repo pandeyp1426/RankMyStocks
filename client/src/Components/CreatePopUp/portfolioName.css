@@ -15,5 +15,5 @@
 }
 
 .popup-textbox-container input:focus {
-  background-color: #000000; 
+  background-color: rgba(69, 55, 134, 0.5);
 }

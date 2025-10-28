@@ -20,6 +20,7 @@ export function PortfolioName() {
         value={portfolioName}
         onChange={handleChange}
         placeholder="Name your portfolio"
+        autoComplete="off"
       />
     </div>
   );

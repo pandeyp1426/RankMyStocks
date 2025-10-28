@@ -19,7 +19,24 @@ cd server
 
 flask –-app app run 
 
+If you can't get your venv running 
 
+open terminal
+
+cd server
+
+Remove-Item -Recurse -Force .venv
+
+python -m ensurepip --upgrade
+
+python -m venv .venv
+
+.venv\Scripts\Activate.ps1     
+
+flask --app app run
+
+
+ 
 
 
 Front End-  
@@ -27,6 +44,10 @@ Front End-
 Assuming you’re in the rank my stocks folder open a new terminal. 
 
 Change the terminal to GitBash 
+
+Create a .env file in client and add dependencies in  
+     REACT_APP_AUTH0_DOMAIN=dev-xnrub1mhoq8kojoy.us.auth0.com 
+     REACT_APP_AUTH0_CLIENT_ID=SDDSZVTGaXylIWeF5f4cY99oUYa0Kjrh 
 
 Type (“cd client”) 
 
