@@ -26,7 +26,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 
-CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
+CORS(app, supports_credentials=True, origins=['http://localhost:5173'])
 
 from stocks import random_stock, get_stock_price, get_company_name
 
@@ -67,7 +67,7 @@ def random_stock_api():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+# ---- Get Stock Data API ----
 @app.route("/api/get-stock-data", methods=["GET"])
 def get_stock_data():
     print("=" * 50)
@@ -123,15 +123,7 @@ def get_stock_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/")   
-def home():
-    return "Welcome to RankMyStocks API!"
-
-
-
-    
-
+# ---- Initialize Session ----
 
 @app.route("/init", methods=["POST"])
 def initialize():
@@ -163,7 +155,7 @@ def initialize():
 
     return response
 
-
+# ---- Get Next Stock Pair ----
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     print("=" * 50)
@@ -204,7 +196,7 @@ def get_next_pair():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+# ---- Pick Stock ----
 @app.route("/pick", methods=["POST"])
 def pick_stock():
     print("=" * 50)
@@ -219,7 +211,7 @@ def pick_stock():
         "stockPick": stock_pick
     })
 
-
+# ---- DB Test Route ----
 @app.route("/db-test")
 def db_test():
     try:
