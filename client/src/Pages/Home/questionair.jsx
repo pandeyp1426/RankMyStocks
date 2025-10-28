@@ -229,7 +229,7 @@ const sendStockPick = async (stock) => {
       .then((res) => res.json())
       .then((data) => {
         console.log("Portfolio saved:", data);
-        alert(`Saved ${chosenStock.ticker} to portfolio: ${name}`);
+        //alert(`Saved ${chosenStock.ticker} to portfolio: ${name}`); removed alert for better UX
       })
       .catch((err) => console.error("Error saving portfolio:", err));
   };

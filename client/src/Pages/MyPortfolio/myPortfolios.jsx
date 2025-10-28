@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./myPortfolios.css";
+import deleteIcon from "../../assets/img/delete.png";
 
 // Converts any date format to a safe numeric timestamp
 function toTimestamp(dateString) {
@@ -20,6 +21,9 @@ export function MyPortfolios() {
   const [ascending, setAscending] = useState(false); // false = descending (LIFO)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [portfolioToDelete, setPortfolioToDelete] = useState(null);
+
 
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
@@ -92,6 +96,26 @@ export function MyPortfolios() {
     setAscending(newAsc);
     setFiltered(sortPortfolios(portfolios, sortOption, newAsc));
   }
+  // Handle portfolio deletion
+  async function handleDelete(id) {
+  try {
+    const res = await fetch(`${API_URL}/api/delete-portfolio/${id}`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      setPortfolios((prev) => prev.filter((p) => p.id !== id));
+      setFiltered((prev) => prev.filter((p) => p.id !== id));
+    } else {
+      alert(data.error || "Failed to delete portfolio");
+    }
+  } catch (err) {
+    console.error("Error deleting portfolio:", err);
+    alert("An error occurred while deleting");
+  }
+}
+
 
   // --- Render UI ---
   if (loading) return <p className="loading-text">Loading portfolios...</p>;
@@ -135,9 +159,45 @@ export function MyPortfolios() {
             return (
               <div key={p.id} className="portfolio-card">
                 <div className="portfolio-header">
-                  <h2>{p.name}</h2>
-                </div>
-
+                   <h2>{p.name}</h2>
+                     <button className="delete-btn"
+                     onClick={() => {
+                      setShowConfirm(true);
+                      setPortfolioToDelete(p.id);
+                     }}
+                     title="Delete portfolio"
+                     >
+                      <img src={deleteIcon} alt="Delete" className="trash-icon" />
+                      </button>
+                      </div>
+                      {showConfirm && (
+                        <div
+                        className="confirm-overlay"
+                        onClick={(e) => {
+                          if (e.target.classList.contains("confirm-overlay")) setShowConfirm(false);
+                        }}
+                        >
+                          <div className="confirm-box">
+                            <p>Are you sure you want to delete this portfolio?</p>
+                            <div className="confirm-buttons">
+                              <button
+                              className="confirm-yes"
+                              onClick={() => {
+                                handleDelete(portfolioToDelete);
+                                setShowConfirm(false);
+                               }}
+                               >
+                                Yes, Delete
+                                </button>
+                                  <button
+                                className="confirm-cancel"
+                                onClick={() => setShowConfirm(false)}
+                                > Cancel
+                                  </button>
+                            </div> 
+                        </div>
+                  </div>
+                       )}
                 <div className="portfolio-summary">
                   <p>
                     <strong>Total Stocks:</strong> {p.stocks?.length || 0}

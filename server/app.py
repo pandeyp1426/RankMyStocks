@@ -155,6 +155,7 @@ def initialize():
 
     return response
 
+
 # ---- Get Next Stock Pair ----
 @app.route("/next", methods=["GET"])
 def get_next_pair():
@@ -328,6 +329,32 @@ def list_portfolios():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+# ---- Delete Portfolio ----
+@app.route("/api/delete-portfolio/<int:portfolio_id>", methods=["DELETE"])
+def delete_portfolio(portfolio_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # First delete associated stocks if they exist
+        cursor.execute("DELETE FROM portfolio_stocks WHERE portfolio_id = %s", (portfolio_id,))
+
+        # Then delete the portfolio itself
+        cursor.execute("DELETE FROM portfolios WHERE id = %s", (portfolio_id,))
+        conn.commit()
+
+        if cursor.rowcount == 0:
+            return jsonify({"error": "Portfolio not found"}), 404
+
+        return jsonify({"message": "Portfolio deleted successfully"}), 200
+    except Exception as e:
+        print("Error deleting portfolio:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 
 
 # ---- Entrypoint ----
