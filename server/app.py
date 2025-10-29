@@ -354,7 +354,17 @@ def delete_portfolio(portfolio_id):
     finally:
         cursor.close()
         conn.close()
+@app.route("/api/user_ID", methods=["POST"])
+def get_user_ID():
+    data = request.get_json()
+    user_ID = data.get("user_ID")
 
+    response = jsonify({
+        "status": "initialized", 
+        "user_ID": user_ID
+    })
+    
+    return response
 
 
 # ---- Entrypoint ----
