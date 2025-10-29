@@ -14,6 +14,7 @@ export function Home() {
   const [portfolios, setPortfolios] = useState([]);
   const [totalStocks, setTotalStocks] = useState(0);
   const [timeFrame, setTimeFrame] = useState("1D");
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated); 
 
   // ✅ Fetch all portfolios and calculate total
   useEffect(() => {
@@ -41,8 +42,14 @@ export function Home() {
 
     fetchPortfolioSummary();
   }, []);
-
-  function nameCheck() {}
+  
+  function handleClick() {
+    if (isAuthenticated) {
+      setButtonPopup(true);
+    } else {
+      alert("Please log in first!");
+    }
+  };
 
   return (
     <div className="home">
@@ -57,10 +64,7 @@ export function Home() {
             results and compare with others.
           </p>
 
-          <button
-            onClick={() => setButtonPopup(true)}
-            className="hero-button"
-          >
+          <button onClick={handleClick} className="hero-button">
             Create Portfolio
           </button>
 
