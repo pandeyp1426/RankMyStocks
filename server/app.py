@@ -26,9 +26,8 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 
-CORS(app, supports_credentials=True, origins=['http://localhost:5173'])
-
-from stocks import random_stock, get_stock_price, get_company_name
+CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
+from stocks import random_stock, get_stock_price, get_company_name, get_description
 
 
 #  Reusable DB Connection
