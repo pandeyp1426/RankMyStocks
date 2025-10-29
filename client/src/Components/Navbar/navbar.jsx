@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import logo from "../../assets/img/logo.png";
+import axios from "axios";
+import { useSelector } from "react-redux";
 import "./navbar.css";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect } from "react";
@@ -9,23 +11,32 @@ import { setAuthData, clearAuthData } from "./authSlicer";
 export function Navbar() {
   const { loginWithRedirect, logout, isAuthenticated, user, getAccessTokenSilently } = useAuth0();
   const dispatch = useDispatch();
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
 //needs to be looked at more later, will store assuming we get data 
 //but allows user to login regardless of auth0 sending us user id and
 //will likely lead to problems later
+
+const userID = useSelector((state) => state.auth.userID);
 
   useEffect(() => {
     const handleAuth = async () => {
       if (isAuthenticated && user) {
         try {
           const token = await getAccessTokenSilently();
+          const id = user.sub;
+
           dispatch(
             setAuthData({
               isAuthenticated,
               user,
-              userID: user.sub,
+              userID: id,
               token,
             })
           );
+
+          const response = await axios.post(`${API_URL}/api/user_ID`, { user_ID: id });
+          console.log(response.data);
+
         } catch (error) {
           console.error("Error fetching token:", error);
         }
@@ -34,8 +45,9 @@ export function Navbar() {
       }
     };
 
-    handleAuth();
-  }, [isAuthenticated, user, getAccessTokenSilently, dispatch]);
+  handleAuth();
+}, [isAuthenticated, user, getAccessTokenSilently, dispatch]);
+
 
   const navLinks = [
     { name: "Home", path: "/", type: "nav" },
