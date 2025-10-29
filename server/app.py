@@ -13,7 +13,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
 
-load_dotenv()  # Load    environment variables from a .env file
+# Load    environment variables from .env file
+load_dotenv()
+
 OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
@@ -28,7 +30,25 @@ app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 from stocks import random_stock, get_stock_price, get_company_name, get_description
 
-# ---- random stock ----
+
+#  Reusable DB Connection
+def get_db_connection():
+    """Create and return a new MySQL database connection."""
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        port=int(os.getenv("DB_PORT", 3306))
+    )
+
+#  Routes
+@app.route("/")
+def home():
+    return "Welcome to RankMyStocks API!"
+
+
+# ---- Random Stock API ----
 @app.route("/api/random-stock")
 def random_stock_api():
     try:
@@ -38,17 +58,16 @@ def random_stock_api():
 
         price = get_stock_price(ticker)
         name = get_company_name(ticker)
-        description = get_description(ticker)
+        
         return jsonify({
             "ticker": ticker,
             "name": name,
             "price": float(price) if price else None,
-            "description": description
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+# ---- Get Stock Data API ----
 @app.route("/api/get-stock-data", methods=["GET"])
 def get_stock_data():
     print("=" * 50)
@@ -62,59 +81,49 @@ def get_stock_data():
 
         price1 = get_stock_price(ticker1)
         name1 = get_company_name(ticker1)
-        description1 = get_description(ticker1)
+        
 
         ticker2 = session.get("stock2", "No stock2 in session")
         price2 = get_stock_price(ticker2)
         name2 = get_company_name(ticker2)
-        description2 = get_description(ticker2)
+        
+        
+        stock1 = ticker1
+        stock2 = ticker2
+
+        model = ChatOpenAI(
+        temperature=0,
+        model_name="gpt-3.5-turbo",
+        api_key=OPEN_AI_API_KEY
+        )
+
+        prompt = ChatPromptTemplate.from_messages([
+         ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 200 characters.")
+        ])
+
+        chain = prompt | model
+        response1 = chain.invoke({"stock": stock1})
+        response2 = chain.invoke({"stock": stock2})
+
+    
 
         return jsonify({
             "ticker1": ticker1,
             "name1": name1,
             "price1": float(price1) if price1 else None,
-            "description1": description1,
-
+            
+            "response1": response1.content,
+            
             "ticker2": ticker2,
             "name2": name2,
             "price2": float(price2) if price2 else None,
-            "description2": description2
+            
+            "response2": response2.content,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/")   
-def home():
-    return "Welcome to RankMyStocks API!"
-
-
-@app.route("/get-stock-info", methods=["GET"])
-def get_stock_info():
-    with open("ticker_list.csv", mode='r') as file:
-        reader = csv.reader(file)
-        stock_list = list(reader)
-
-    stock = random.choice(stock_list)[0] if stock_list else None
-
-    model = ChatOpenAI(
-        temperature=0,
-        model_name="gpt-3.5-turbo",
-        api_key=OPEN_AI_API_KEY
-    )
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 100 characters.")
-    ])
-
-    chain = prompt | model
-    response = chain.invoke({"stock": stock})
-
-    return jsonify({
-        "stock": stock,
-        "info": response.content
-    })
-
+# ---- Initialize Session ----
 
 @app.route("/", methods=["POST"])
 def initialize():
@@ -147,6 +156,7 @@ def initialize():
     return response
 
 
+# ---- Get Next Stock Pair ----
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     print("=" * 50)
@@ -187,36 +197,26 @@ def get_next_pair():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+# ---- Pick Stock ----
 @app.route("/pick", methods=["POST"])
 def pick_stock():
+    print("=" * 50)
+    print("PICK ROUTE CALLED")
+    print("=" * 50)
+    
     #this function recives the users picked stock from the frontend and stores it in the portfolio list
     data = request.get_json()
-    stock_pick = data.get("stock_pick")
-    portfolio = session.get("portfolio", "no portolio")
-    questionQTY = session.get("questionQTY", "None")
-    portfolio.append(stock_pick)
+    stock_pick = data.get("stockPick")
     
-    if len(portfolio) == questionQTY:
-        #send list to databse
-        return jsonify({
-            "status": "success",
-            "portfolio": portfolio
-        })
+    return jsonify({
+        "stockPick": stock_pick
+    })
 
-    return 0
-
-
+# ---- DB Test Route ----
 @app.route("/db-test")
 def db_test():
     try:
-        import mysql.connector
-        conn = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "rankmystocks_user"),
-            password=os.getenv("DB_PASSWORD", "Stocks0_0!"),
-            database=os.getenv("DB_NAME", "Rankmystocks")
-        )
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT DATABASE();")
         db_name = cursor.fetchone()[0]
@@ -226,6 +226,8 @@ def db_test():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+
+# ---- Create Portfolio ----
 @app.route("/api/portfolios", methods=["POST"])
 def create_portfolio():
     data = request.get_json()
@@ -236,15 +238,10 @@ def create_portfolio():
         return jsonify({"error": "Missing name or stocks"}), 400
 
     try:
-        conn = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "rankmystocks_user"),
-            password=os.getenv("DB_PASSWORD", "Stocks0_0!"),
-            database=os.getenv("DB_NAME", "Rankmystocks")
-        )
+        conn = get_db_connection()
         cursor = conn.cursor()
 
-        # 🔹 Reuse portfolio if name already exists
+        # Reuse existing portfolio if name already exists
         cursor.execute("SELECT id FROM portfolios WHERE name = %s", (name,))
         existing = cursor.fetchone()
 
@@ -254,7 +251,7 @@ def create_portfolio():
             cursor.execute("INSERT INTO portfolios (name) VALUES (%s)", (name,))
             portfolio_id = cursor.lastrowid
 
-        # 🔹 Insert stocks (default price = 0 if missing)
+        # Insert stocks (default price = 0 if missing)
         for s in stocks:
             price_value = s.get("price") or 0.0
             cursor.execute(
@@ -270,36 +267,44 @@ def create_portfolio():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# ---- list portfolios ----
+
+# ---- List Portfolios ----
 @app.route("/api/portfolios", methods=["GET"])
 def list_portfolios():
     try:
-        conn = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "rankmystocks_user"),
-            password=os.getenv("DB_PASSWORD", "Stocks0_0!"),
-            database=os.getenv("DB_NAME", "Rankmystocks")
-        )
+        conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        # Include created_at and sort newest first (LIFO)
         cursor.execute("""
-            SELECT p.id, p.name, ps.ticker, ps.price
+            SELECT 
+                p.id, 
+                p.name, 
+                p.created_at,
+                ps.ticker, 
+                ps.price
             FROM portfolios p
             LEFT JOIN portfolio_stocks ps ON p.id = ps.portfolio_id
+            ORDER BY p.created_at DESC
         """)
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
 
-        # Group rows into portfolios
+        # Group rows into portfolio objects
         portfolios = {}
         for r in rows:
             pid = r["id"]
-            portfolios.setdefault(pid, {
-                "id": pid,
-                "name": r["name"],
-                "stocks": []
-            })
+            if pid not in portfolios:
+                portfolios[pid] = {
+                    "id": pid,
+                    "name": r["name"],
+                    "created_at": (
+                        r["created_at"].isoformat() if r["created_at"] else None
+                    ),
+                    "stocks": []
+                }
+
             if r["ticker"]:
                 price_value = 0.0
                 try:
@@ -313,10 +318,46 @@ def list_portfolios():
                     "price": price_value
                 })
 
-        return jsonify(list(portfolios.values()))
+        # Convert to list sorted by created_at DESC (newest first)
+        sorted_portfolios = sorted(
+            portfolios.values(),
+            key=lambda x: x["created_at"] or "",
+            reverse=True
+        )
+
+        return jsonify(sorted_portfolios)
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+# ---- Delete Portfolio ----
+@app.route("/api/delete-portfolio/<int:portfolio_id>", methods=["DELETE"])
+def delete_portfolio(portfolio_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
+<<<<<<< HEAD
+=======
+        # First delete associated stocks if they exist
+        cursor.execute("DELETE FROM portfolio_stocks WHERE portfolio_id = %s", (portfolio_id,))
+
+        # Then delete the portfolio itself
+        cursor.execute("DELETE FROM portfolios WHERE id = %s", (portfolio_id,))
+        conn.commit()
+
+        if cursor.rowcount == 0:
+            return jsonify({"error": "Portfolio not found"}), 404
+
+        return jsonify({"message": "Portfolio deleted successfully"}), 200
+    except Exception as e:
+        print("Error deleting portfolio:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+>>>>>>> 6f9e8dbf186850fe682d2fbfcf94cd6d9a9b212a
 @app.route("/api/user_ID", methods=["POST"])
 def get_user_ID():
     data = request.get_json()
@@ -329,11 +370,10 @@ def get_user_ID():
     
     return response
 
+<<<<<<< HEAD
 # ---- entrypoint ----
+=======
+# ---- Entrypoint ----
+>>>>>>> 6f9e8dbf186850fe682d2fbfcf94cd6d9a9b212a
 if __name__ == "__main__":
-    app.run(
-        debug=True,
-        host="localhost",
-        port=5002
-    )
-
+    app.run(debug=True, host="localhost", port=5002)
