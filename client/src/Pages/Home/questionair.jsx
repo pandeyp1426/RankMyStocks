@@ -21,53 +21,6 @@ export function Questionair() {
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
   
-  // fetch two unique random stocks
-  const fetchTwoStocks = async () => {
-    try {
-      let data1, data2;
-
-      do {
-        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data1 || !data1.ticker || data1.ticker === "Symbol");
-
-
-      do {
-        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
-
-      
-      console.log("Fetched stock1:", data1);
-      console.log("Fetched stock2:", data2);
-      
-      setStock1(data1);
-      setStock2(data2);
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
-
-  async function fetchStockInfo(ticker) {
-  const res = await fetch(`${API_URL}/get-stock-info?ticker=${ticker}`);
-  const data = await res.json();
-  return data.info;
-}
-
-useEffect(() => {
-  async function loadInfo() {
-    if (stock1 && stock1.ticker && !stock1.info) {
-      const info = await fetchStockInfo(stock1.ticker);
-      setStock1(prev => ({ ...prev, info }));
-    }
-    if (stock2 && stock2.ticker && !stock2.info) {
-      const info = await fetchStockInfo(stock2.ticker);
-      setStock2(prev => ({ ...prev, info }));
-    }
-  }
-
-  loadInfo();
-}, [stock1?.ticker, stock2?.ticker]);
-
-
   //function to send questionQTY and portfolio name to backend
   const sendQuestionQTY = async () => {
     try {
