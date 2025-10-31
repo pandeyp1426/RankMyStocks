@@ -195,21 +195,22 @@ def get_next_pair():
         return jsonify({"error": str(e)}), 500
 
 #route to reroll stock pair
-@app.route("/reroll", methods =["GET"])
+@app.route("/reroll", methods =["POST"])
 def reroll():
-    stock_list = session.get("stock_list", "No stock list")
-    stock1 = stock_list.pop(0)
-    stock2 = stock_list.pop(0)
-    session["stock1"] = stock1
-    session["stock2"] = stock2
+    print("=" * 50)
+    print("REROLL ROUTE CALLED")
+    print("=" * 50)
     
-    random_stock1 = stocks.random_stock()
-    random_stock2 = stocks.random_stock()
+    stock_list = session.get("stock_list", "No stock list in sessions")
+    data = request.get_json()
+    rerollBool = data.get("reroll", False)
+    if(rerollBool):
+        stock_list.append(stocks.random_stock())
+        stock_list.append(stocks.random_stock())
+        session["stock_list"] = stock_list
+    else:
+        return jsonify({"error"}), 500
     
-    stock_list.append(random_stock1)
-    stock_list.append(random_stock2)
-    
-    session["stock_list"] = stock_list
     
     return stock_list
 

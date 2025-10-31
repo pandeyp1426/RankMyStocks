@@ -43,11 +43,11 @@ export function Home() {
   }, []);
 
   function handleClick() {
-    if (isAuthenticated) {
+    //if (isAuthenticated) {
       setButtonPopup(true);
-    } else {
-      alert("Please log in first!");
-    }
+    //} //else {
+      //alert("Please log in first!");
+    //}
   };
 
   return (
