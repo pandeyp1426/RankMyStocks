@@ -205,9 +205,16 @@ const sendStockPick = async (stock) => {
   };
 
   // reroll without picking
-  const handleReroll = () => {
-    //fetchTwoStocks();
-  };
+  const handleReroll = async () => {
+  try {
+    await axios.get('/reroll', {
+      withCredentials: true,
+    });
+    console.log('Reroll successful');
+  } catch (error) {
+    console.error('Error calling reroll:', error);
+  }
+};
 
   // Save portfolio to backend
   const savePortfolio = (chosenStock) => {

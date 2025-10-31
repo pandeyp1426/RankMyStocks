@@ -154,14 +154,12 @@ def initialize():
 
     return response
 
-
 # ---- Get Next Stock Pair ----
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     print("=" * 50)
     print("NEXT ROUTE CALLED")
     print("=" * 50)
-
 
     try:
         if 'stock_list' not in session:
@@ -183,7 +181,7 @@ def get_next_pair():
             elif len(stock_list) == 0:
                 #do somthing to end the stock picking
                 return jsonify({
-                    "status": "error",
+                    "status": "Complete",
                     "message": "list is empty"
                 }), 400
             
@@ -196,6 +194,26 @@ def get_next_pair():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#route to reroll stock pair
+@app.route("/reroll", methods =["GET"])
+def reroll():
+    stock_list = session.get("stock_list", "No stock list")
+    stock1 = stock_list.pop(0)
+    stock2 = stock_list.pop(0)
+    session["stock1"] = stock1
+    session["stock2"] = stock2
+    
+    random_stock1 = stocks.random_stock()
+    random_stock2 = stocks.random_stock()
+    
+    stock_list.append(random_stock1)
+    stock_list.append(random_stock2)
+    
+    session["stock_list"] = stock_list
+    
+    return stock_list
+
+
 # ---- Pick Stock ----
 @app.route("/pick", methods=["POST"])
 def pick_stock():
@@ -206,6 +224,10 @@ def pick_stock():
     #this function recives the users picked stock from the frontend and stores it in the portfolio list
     data = request.get_json()
     stock_pick = data.get("stockPick")
+    
+    portoflio = session.get("portfolio", "No portfolio avalible")
+    portoflio.append(stock_pick)
+    questionQTY = session.get("questionQTY")
     
     return jsonify({
         "stockPick": stock_pick
