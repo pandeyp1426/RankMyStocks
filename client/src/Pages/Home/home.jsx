@@ -7,6 +7,8 @@ import { useSelector } from "react-redux";
 import "./home.css";
 import appPreview from "../../assets/img/logo.png"; // you can replace this with any preview image
 import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
+import { StockSearch } from "../../Components/StockSearch/stockSearch.jsx";
+import { PortfolioChart } from "../../Components/PortfolioChart/portfolioChart.jsx";
 
 export function Home() {
   const [buttonPopup, setButtonPopup] = useState(false);
@@ -14,7 +16,12 @@ export function Home() {
   const [portfolios, setPortfolios] = useState([]);
   const [totalStocks, setTotalStocks] = useState(0);
   const [timeFrame, setTimeFrame] = useState("1D");
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated); 
+  // Live chart cursor values to show under title
+  const [chartDelta, setChartDelta] = useState(null);
+  const [chartPct, setChartPct] = useState(null);
+  const [lineData, setLineData] = useState([]);
+  const [candleData, setCandleData] = useState([]);
+
   // ✅ Fetch all portfolios and calculate total
   useEffect(() => {
     async function fetchPortfolioSummary() {
@@ -42,6 +49,39 @@ export function Home() {
     fetchPortfolioSummary();
   }, []);
 
+  // Load performance series for selected range and compute header delta
+  useEffect(() => {
+    let active = true;
+    async function loadSeries() {
+      try {
+        const res = await fetch(`http://127.0.0.1:5002/api/portfolio-performance?range=${encodeURIComponent(timeFrame)}`);
+        const json = await res.json();
+        if (!active) return;
+        const series = Array.isArray(json.series) ? json.series : [];
+        const ldata = series.map((d) => ({ x: d.ts, y: Number(d.value) || 0 }));
+        setLineData(ldata);
+        // derive simple OHLC groups (optional): computed in chart if not passed
+        if (ldata.length > 0) {
+          const first = ldata[0].y;
+          const last = ldata[ldata.length - 1].y;
+          const delta = last - first;
+          const pct = first !== 0 ? (delta / first) * 100 : 0;
+          setChartDelta(delta);
+          setChartPct(pct);
+        } else {
+          setChartDelta(null);
+          setChartPct(null);
+        }
+      } catch (e) {
+        // ignore silently for now
+      }
+    }
+    loadSeries();
+    return () => {
+      active = false;
+    };
+  }, [timeFrame]);
+
   function handleClick() {
     //if (isAuthenticated) {
       setButtonPopup(true);
@@ -52,6 +92,8 @@ export function Home() {
 
   return (
     <div className="home">
+      {/* Search bar positioned at top of Home, just under navbar via page-content spacing */}
+      <StockSearch />
       <section className="hero-container">
         {/* LEFT SIDE */}
         <div className="hero-left">
@@ -87,7 +129,7 @@ export function Home() {
         </div>
       </section>
        {/* ---------- MAIN PORTFOLIO SECTION ---------- */}
-      <section className="main-portfolio">
+       <section className="main-portfolio">
         <div className="portfolio-card">
           <div className="portfolio-header">
             <h2>Portfolio</h2>
@@ -110,16 +152,25 @@ export function Home() {
               maximumFractionDigits: 2,
             })}
           </h1>
+          {chartDelta !== null && chartPct !== null && (
+            <p
+              className="portfolio-delta"
+              style={{ color: (chartDelta ?? 0) >= 0 ? "#00c27a" : "#ff5a5a" }}
+            >
+              {(chartDelta >= 0 ? "+" : "") + (chartDelta || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {" "}({(chartPct || 0).toFixed(2)}%)
+            </p>
+          )}
           <p className="portfolio-sub">
             # of Stocks: {totalStocks}
           </p>
 
           <div className="portfolio-chart">
-            {/* Placeholder chart - replace with Recharts later */}
-            <div className="chart-placeholder">Chart showing {timeFrame} data</div>
+            <PortfolioChart lineData={lineData} candleData={candleData} />
           </div>
         </div>
       </section>
+      {/* Search bar moved back to the top; removed duplicate here */}
     </div>
   );
 }

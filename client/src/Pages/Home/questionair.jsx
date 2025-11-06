@@ -1,5 +1,6 @@
 import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import "./Questionair.css";
 
@@ -14,6 +15,7 @@ export function Questionair() {
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
   const [selectedStocks, setSelectedStocks] = useState([]);
+  const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const didFetchRef = useRef(false);
@@ -182,21 +184,33 @@ const sendStockPick = async (stock) => {
 
   // when user picks a stock
   const handlePick = async (stock) => {
-    setSelectedStocks([...selectedStocks, stock]);
+    // stop if already completed
+    if (isComplete || selectedStocks.length >= Number(questionQTY || 0)) {
+      setIsComplete(true);
+      return;
+    }
+
+    const newSelected = [...selectedStocks, stock];
+    setSelectedStocks(newSelected);
     savePortfolio(stock); //save to backend
+
+    // If we've reached the configured number of rounds, mark complete and stop
+    if (newSelected.length >= Number(questionQTY || 0)) {
+      setIsComplete(true);
+      // hide current choices to avoid extra clicks
+      setStock1(null);
+      setStock2(null);
+      return;
+    }
 
     try {
       await getNextPair(); //get next pair from backend
       await fetchStockData(); //fetch new stock data from backend
       await sendStockPick(stock); //sends the stock picked to the backend
-
-
     } catch (err) {
       console.error("Error getting next pair:", err);
       setError(err.message);
-      //await fetchTwoStocks(); //fallback to 
     }
-o
   };
 
   const reroll = async () => {
@@ -214,6 +228,7 @@ o
 
   // reroll without picking
   const handleReroll = async () => {
+    if (isComplete) return;
     await reroll();
     await getNextPair();
     await fetchStockData();
@@ -252,14 +267,16 @@ o
         <div className="questionair-header">
           <h1>{portfolioName || "Your Portfolio"}</h1>
           <p>{questionQTY} Rounds</p>
+          <p>Rounds Left: {Math.max(0, Number(questionQTY || 0) - selectedStocks.length)}</p>
           <h2>Which stock would you prefer?</h2>
         </div>
 
+        {!isComplete && (
         <div className="stock-compare-container">
           {stock1 && (
             <div
               className="stock-card"
-              onClick={() => handlePick(stock1)}
+              onClick={() => !isComplete && handlePick(stock1)}
               role="button"
               tabIndex={0}
             >
@@ -276,7 +293,7 @@ o
           {stock2 && (
             <div
               className="stock-card"
-              onClick={() => handlePick(stock2)}
+              onClick={() => !isComplete && handlePick(stock2)}
               role="button"
               tabIndex={0}
             >
@@ -288,10 +305,19 @@ o
             </div>
           )}
         </div>
+        )}
 
-        <button className="reroll-button" onClick={handleReroll}>
-          Reroll Stocks
-        </button>
+        {isComplete ? (
+          <div className="complete-box">
+            <h3>All rounds completed!</h3>
+            <p>Your selections have been saved to the portfolio.</p>
+            <Link to="/myPortfolios" className="hero-button" style={{textDecoration:'none'}}>View My Portfolios</Link>
+          </div>
+        ) : (
+          <button className="reroll-button" onClick={handleReroll}>
+            Reroll Stocks
+          </button>
+        )}
       </div>
 
       {/* RIGHT PORTFOLIO BOX */}

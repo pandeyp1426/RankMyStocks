@@ -1,0 +1,168 @@
+.stock-search {
+  width: 85%; /* align with hero width */
+  max-width: 1200px; /* align with hero max-width */
+  margin: 20px auto 60px; /* use page-content top margin for navbar offset */
+  display: flex;
+  justify-content: center;
+}
+
+.stock-search__card {
+  width: 100%;
+  max-width: 1200px; /* align with hero width */
+  background: rgba(37, 37, 92, 0.9); /* match hero-container dark */
+  border-radius: 39px; /* match hero rounded corners */
+  padding: 40px 48px; /* match hero padding scale */
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.35);
+  color: #fff; /* white text on dark background */
+  backdrop-filter: blur(8px);
+}
+
+.stock-search__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.stock-search__subtitle {
+  color: #d3d4e6; /* match hero description tone */
+  margin: 0 0 18px;
+}
+
+.stock-search__input-row {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.stock-search__input-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.stock-search__icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  opacity: 0.9;
+}
+
+.stock-search__input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.15);
+  color: #fff;
+  border-radius: 14px;
+  padding: 0.9rem 1rem 0.9rem 2.2rem; /* space for icon */
+  font-size: 1rem;
+  outline: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.stock-search__input::placeholder {
+  color: #cfd1e6;
+}
+
+.stock-search__input:focus {
+  border-color: #00c6ff;
+  box-shadow: 0 0 0 4px rgba(0, 198, 255, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.stock-search__btn {
+  border: none;
+  padding: 12px 22px;
+  border-radius: 30px; /* visually same as hero-button */
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.stock-search__status {
+  margin-top: 10px;
+  color: #cfd1e6;
+}
+
+.stock-search__error {
+  margin-top: 10px;
+  color: #ff7b7b;
+  font-weight: 700;
+}
+
+.stock-search__results {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+
+.stock-search__result {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.stock-search__result:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  border-color: rgba(0, 246, 255, 0.25);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.stock-search__result-name {
+  font-weight: 700;
+}
+
+.stock-search__result-ticker {
+  color: #00f9ff; /* cyan accent like hero */
+  font-weight: 800;
+}
+
+.stock-search__details {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.stock-search__details-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.stock-search__details-name {
+  font-weight: 800;
+}
+
+.stock-search__details-ticker {
+  color: #00f9ff;
+  font-weight: 800;
+}
+
+.stock-search__description {
+  color: #e8eeff;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.darkcard {
+  background: #1a1a3d;
+  border-radius: 16px;
+  padding: 1rem 1.2rem;
+  border: 1px solid rgba(0, 246, 255, 0.15);
+}
+
+.stock-search__price {
+  font-weight: 800;
+  margin: 6px 0 8px;
+}
+
+/* Ensure description text is readable on the dark popup */
+.popup .stock-search__description {
+  color: #fff;
+}
