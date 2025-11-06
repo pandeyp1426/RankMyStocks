@@ -29,6 +29,8 @@ app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 CORS(app, supports_credentials=True, origins=['http://localhost:5173'])
 
 from stocks import random_stock, get_stock_price, get_company_name
+from stocks import get_description
+from stocks import search_stocks, get_description
 
 
 #  Reusable DB Connection
@@ -48,20 +50,24 @@ def home():
     return "Welcome to RankMyStocks API!"
 
 
-# ---- Random Stock API ----
+# ---- Random Stock or Specific Ticker API ----
 @app.route("/api/random-stock")
 def random_stock_api():
     try:
-        ticker = random_stock()
+        # If a ticker is provided, return that stock; else return a random one
+        q_ticker = request.args.get("ticker", "").strip().upper()
+        ticker = q_ticker or random_stock()
         if not ticker:
-            return jsonify({"error": "No random stock found"}), 500
+            return jsonify({"error": "No stock found"}), 500
 
         price = get_stock_price(ticker)
         name = get_company_name(ticker)
-        
+        description = get_description(ticker)
+
         return jsonify({
             "ticker": ticker,
             "name": name,
+            "description": description,
             "price": float(price) if price else None,
         })
     except Exception as e:
@@ -330,6 +336,106 @@ def list_portfolios():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     
+# ---- Portfolio Performance (synthetic timeseries) ----
+@app.route("/api/portfolio-performance", methods=["GET"])
+def portfolio_performance():
+    try:
+        # range: 1D, 1W, 1M, 1Y, ALL
+        rng = request.args.get("range", "1D").upper()
+
+        # Compute current total value from DB (sum of all stocks' stored price)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT COALESCE(SUM(CASE WHEN ps.price IS NULL OR ps.price = '' OR ps.price = 'None' THEN 0 ELSE ps.price END), 0) AS total
+            FROM portfolio_stocks ps
+        """)
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        try:
+            base_value = float(row["total"]) if row and row.get("total") is not None else 0.0
+        except (TypeError, ValueError):
+            base_value = 0.0
+
+        import datetime as _dt
+        import random as _rand
+
+        def gen_points(days, step_days=1, points=None):
+            # Generate a list of (timestamp, value) pairs going back `days` days
+            # Use small random walk around base_value to simulate performance
+            if points is None:
+                points = int(days/step_days) + 1
+            now = _dt.datetime.now()
+            values = []
+            current = base_value if base_value > 0 else _rand.uniform(5000, 20000)
+            drift = 0.0005  # gentle upward drift per step
+            vol = 0.01      # volatility factor
+            for i in range(points):
+                t = now - _dt.timedelta(days=(points-1-i)*step_days)
+                shock = current * vol * _rand.uniform(-1, 1)
+                current = max(0, current * (1 + drift) + shock)
+                values.append({
+                    "ts": t.isoformat(),
+                    "value": round(current, 2)
+                })
+            return values
+
+        if rng == "1D":
+            # last 24 hours, hourly
+            now = _dt.datetime.now()
+            points = []
+            current = base_value if base_value > 0 else _rand.uniform(5000, 20000)
+            drift = 0.0002
+            vol = 0.003
+            for i in range(24):
+                t = now - _dt.timedelta(hours=(23 - i))
+                shock = current * vol * _rand.uniform(-1, 1)
+                current = max(0, current * (1 + drift) + shock)
+                points.append({"ts": t.isoformat(), "value": round(current, 2)})
+            data = points
+        elif rng == "1W":
+            data = gen_points(7, step_days=1)
+        elif rng == "1M":
+            data = gen_points(30, step_days=1)
+        elif rng == "1Y":
+            data = gen_points(365, step_days=7, points=53)
+        else:  # ALL
+            data = gen_points(365*2, step_days=30, points=25)
+
+        return jsonify({"range": rng, "series": data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ---- Search Stocks (by name/symbol) ----
+@app.route("/api/search", methods=["GET"])
+def search():
+    try:
+        q = request.args.get("q", "").strip()
+        if not q:
+            return jsonify([])
+        results = search_stocks(q)
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ---- Get Stock Description ----
+@app.route("/api/stock-description", methods=["GET"])
+def stock_description():
+    try:
+        ticker = request.args.get("ticker", "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "Missing ticker"}), 400
+        desc = get_description(ticker)
+        name = get_company_name(ticker)
+        return jsonify({
+            "ticker": ticker,
+            "name": name,
+            "description": desc
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 # ---- Delete Portfolio ----
 @app.route("/api/delete-portfolio/<int:portfolio_id>", methods=["DELETE"])
 def delete_portfolio(portfolio_id):

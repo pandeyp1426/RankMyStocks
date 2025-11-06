@@ -7,4 +7,10 @@ export default defineConfig({
     port: 5173,          // ✅ React frontend port
     strictPort: true,    // ✅ ensures Vite fails if port is already taken
   },
+  optimizeDeps: {
+    include: [
+      'apexcharts',
+      'react-apexcharts'
+    ],
+  },
 })
