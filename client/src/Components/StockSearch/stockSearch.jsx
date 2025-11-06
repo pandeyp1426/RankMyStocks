@@ -24,7 +24,7 @@ export function StockSearch() {
       }
       try {
         const res = await fetch(
-          `http://127.0.0.1:5001/api/search?q=${encodeURIComponent(debouncedQuery)}`
+          `http://127.0.0.1:5002/api/search?q=${encodeURIComponent(debouncedQuery)}`
         );
         const data = await res.json();
         if (!active) return;
@@ -49,7 +49,7 @@ export function StockSearch() {
     setError("");
     setResult(null);
     try {
-      const res = await fetch(`http://127.0.0.1:5001/api/random-stock?ticker=${encodeURIComponent(q)}`);
+      const res = await fetch(`http://127.0.0.1:5002/api/random-stock?ticker=${encodeURIComponent(q)}`);
       const data = await res.json();
       if (data && !data.error) {
         setResult(data);
@@ -72,7 +72,7 @@ export function StockSearch() {
     setResult(null);
     try {
       const res = await fetch(
-        `http://127.0.0.1:5001/api/random-stock?ticker=${encodeURIComponent(item.ticker)}`
+        `http://127.0.0.1:5002/api/random-stock?ticker=${encodeURIComponent(item.ticker)}`
       );
       const data = await res.json();
       if (data && !data.error) {
@@ -95,7 +95,7 @@ export function StockSearch() {
     setError("");
     try {
       const res = await fetch(
-        `http://127.0.0.1:5001/api/stock-description?ticker=${encodeURIComponent(
+        `http://127.0.0.1:5002/api/stock-description?ticker=${encodeURIComponent(
           item.ticker
         )}`
       );

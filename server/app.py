@@ -26,7 +26,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 
-CORS(app, supports_credentials=True, origins=['http://localhost:5173'])
+CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 
 from stocks import random_stock, get_stock_price, get_company_name
 from stocks import get_description
@@ -465,4 +465,4 @@ def delete_portfolio(portfolio_id):
 
 # ---- Entrypoint ----
 if __name__ == "__main__":
-    app.run(debug=True, host="localhost", port=5001)
+    app.run(debug=True, host="localhost", port=5002)

@@ -26,7 +26,7 @@ export function Home() {
   useEffect(() => {
     async function fetchPortfolioSummary() {
       try {
-        const response = await fetch("http://127.0.0.1:5001/api/portfolios");
+        const response = await fetch("http://127.0.0.1:5002/api/portfolios");
         const data = await response.json();
 
         let totalValue = 0;
@@ -54,7 +54,7 @@ export function Home() {
     let active = true;
     async function loadSeries() {
       try {
-        const res = await fetch(`http://127.0.0.1:5001/api/portfolio-performance?range=${encodeURIComponent(timeFrame)}`);
+        const res = await fetch(`http://127.0.0.1:5002/api/portfolio-performance?range=${encodeURIComponent(timeFrame)}`);
         const json = await res.json();
         if (!active) return;
         const series = Array.isArray(json.series) ? json.series : [];
