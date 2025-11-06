@@ -161,14 +161,12 @@ def initialize():
 
     return response
 
-
 # ---- Get Next Stock Pair ----
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     print("=" * 50)
     print("NEXT ROUTE CALLED")
     print("=" * 50)
-
 
     try:
         if 'stock_list' not in session:
@@ -190,7 +188,7 @@ def get_next_pair():
             elif len(stock_list) == 0:
                 #do somthing to end the stock picking
                 return jsonify({
-                    "status": "error",
+                    "status": "Complete",
                     "message": "list is empty"
                 }), 400
             
@@ -203,6 +201,27 @@ def get_next_pair():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#route to reroll stock pair
+@app.route("/reroll", methods =["POST"])
+def reroll():
+    print("=" * 50)
+    print("REROLL ROUTE CALLED")
+    print("=" * 50)
+    
+    stock_list = session.get("stock_list", "No stock list in sessions")
+    data = request.get_json()
+    rerollBool = data.get("reroll", False)
+    if(rerollBool):
+        stock_list.append(stocks.random_stock())
+        stock_list.append(stocks.random_stock())
+        session["stock_list"] = stock_list
+    else:
+        return jsonify({"error"}), 500
+    
+    
+    return stock_list
+
+
 # ---- Pick Stock ----
 @app.route("/pick", methods=["POST"])
 def pick_stock():
@@ -213,6 +232,10 @@ def pick_stock():
     #this function recives the users picked stock from the frontend and stores it in the portfolio list
     data = request.get_json()
     stock_pick = data.get("stockPick")
+    
+    portoflio = session.get("portfolio", "No portfolio avalible")
+    portoflio.append(stock_pick)
+    questionQTY = session.get("questionQTY")
     
     return jsonify({
         "stockPick": stock_pick
@@ -461,7 +484,17 @@ def delete_portfolio(portfolio_id):
         cursor.close()
         conn.close()
 
+@app.route("/api/user_ID", methods=["POST"])
+def get_user_ID():
+    data = request.get_json()
+    user_ID = data.get("user_ID")
 
+    response = jsonify({
+        "status": "initialized", 
+        "user_ID": user_ID
+    })
+    
+    return response
 
 # ---- Entrypoint ----
 if __name__ == "__main__":

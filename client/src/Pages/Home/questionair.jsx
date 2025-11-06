@@ -196,17 +196,27 @@ const sendStockPick = async (stock) => {
       setError(err.message);
       //await fetchTwoStocks(); //fallback to 
     }
-
-
-    //fetchTwoStocks(); // refresh new options
-    //getNextPair(); //this will move to the next pair once user picks a stock
-    //getNextPair //this will get the next pairs data from backend
-    //pick(); //this will pick the stock and save it to the portfolio
+o
   };
 
+  const reroll = async () => {
+    try {
+      await axios.post(`${API_URL}/reroll`, {
+        withCredentials: true,
+        reroll: true
+      });
+      console.log('Reroll successful');
+    } catch (error) {
+      console.error('Error calling reroll:', error);
+    }
+  };
+
+
   // reroll without picking
-  const handleReroll = () => {
-    //fetchTwoStocks();
+  const handleReroll = async () => {
+    await reroll();
+    await getNextPair();
+    await fetchStockData();
   };
 
   // Save portfolio to backend
