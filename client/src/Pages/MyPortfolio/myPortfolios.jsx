@@ -203,44 +203,17 @@ export function MyPortfolios() {
               >
                 <div className="portfolio-header">
                    <h2>{p.name}</h2>
-                     <button className="delete-btn"
-                     onClick={() => {
+                    <button className="delete-btn"
+                    onClick={(event) => {
+                      event.stopPropagation();
                       setShowConfirm(true);
                       setPortfolioToDelete(p.id);
-                     }}
-                     title="Delete portfolio"
-                     >
-                      <img src={deleteIcon} alt="Delete" className="trash-icon" />
-                      </button>
-                      </div>
-                      {showConfirm && (
-                        <div
-                        className="confirm-overlay"
-                        onClick={(e) => {
-                          if (e.target.classList.contains("confirm-overlay")) setShowConfirm(false);
-                        }}
-                        >
-                          <div className="confirm-box">
-                            <p>Are you sure you want to delete this portfolio?</p>
-                            <div className="confirm-buttons">
-                              <button
-                              className="confirm-yes"
-                              onClick={() => {
-                                handleDelete(portfolioToDelete);
-                                setShowConfirm(false);
-                               }}
-                               >
-                                Yes, Delete
-                                </button>
-                                  <button
-                                className="confirm-cancel"
-                                onClick={() => setShowConfirm(false)}
-                                > Cancel
-                                  </button>
-                            </div> 
-                        </div>
-                  </div>
-                       )}
+                    }}
+                    title="Delete portfolio"
+                    >
+                     <img src={deleteIcon} alt="Delete" className="trash-icon" />
+                     </button>
+                     </div>
                 <div className="portfolio-summary">
                   <p>
                     <strong>Total Stocks:</strong> {p.stocks?.length || 0}
@@ -277,6 +250,38 @@ export function MyPortfolios() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {showConfirm && (
+        <div
+          className="confirm-overlay"
+          onClick={() => setShowConfirm(false)}
+        >
+          <div
+            className="confirm-box"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p>Are you sure you want to delete this portfolio?</p>
+            <div className="confirm-buttons">
+              <button
+                className="confirm-yes"
+                onClick={() => {
+                  if (portfolioToDelete == null) return;
+                  handleDelete(portfolioToDelete);
+                  setShowConfirm(false);
+                }}
+              >
+                Yes, Delete
+              </button>
+              <button
+                className="confirm-cancel"
+                onClick={() => setShowConfirm(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <Popup trigger={showPortfolio} setTrigger={setShowPortfolio}>
