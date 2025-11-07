@@ -30,6 +30,8 @@ export function MyPortfolios() {
   const [stockStats, setStockStats] = useState(null);
   const [digest, setDigest] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const activeStockCount = activePortfolio?.stocks?.length || 0;
+  const enableStockScroll = activeStockCount > 5;
 
 
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
@@ -289,14 +291,16 @@ export function MyPortfolios() {
           <div className="portfolio-modal">
             <div className="pm-left">
               <h3 className="pm-title">{activePortfolio.name}</h3>
-              <ul className="pm-stock-list">
-                {(activePortfolio.stocks || []).map((s, i) => (
-                  <li key={i} className="pm-stock-item" onClick={() => loadStockDetails(s.ticker)}>
-                    <span>{s.ticker}</span>
-                    <span className="pm-price">${Number(s.price || 0).toFixed(2)}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className={`pm-stock-pane ${enableStockScroll ? "pm-stock-pane--scroll" : ""}`}>
+                <ul className="pm-stock-list">
+                  {(activePortfolio.stocks || []).map((s, i) => (
+                    <li key={i} className="pm-stock-item" onClick={() => loadStockDetails(s.ticker)}>
+                      <span>{s.ticker}</span>
+                      <span className="pm-price">${Number(s.price || 0).toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
             <div className="pm-right">
               {!activeStock && <p className="pm-hint">Select a stock to see Key Insights and Daily Digest.</p>}
