@@ -467,8 +467,6 @@ def delete_portfolio(portfolio_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-<<<<<<< HEAD
-=======
         # First delete associated stocks if they exist
         cursor.execute("DELETE FROM portfolio_stocks WHERE portfolio_id = %s", (portfolio_id,))
 
@@ -487,7 +485,6 @@ def delete_portfolio(portfolio_id):
         cursor.close()
         conn.close()
 
->>>>>>> 6f9e8dbf186850fe682d2fbfcf94cd6d9a9b212a
 @app.route("/api/user_ID", methods=["POST"])
 def get_user_ID():
     data = request.get_json()
@@ -500,10 +497,6 @@ def get_user_ID():
     
     return response
 
-<<<<<<< HEAD
-# ---- entrypoint ----
-=======
 # ---- Entrypoint ----
->>>>>>> 6f9e8dbf186850fe682d2fbfcf94cd6d9a9b212a
 if __name__ == "__main__":
     app.run(debug=True, host="localhost", port=5002)
