@@ -36,9 +36,6 @@ python -m venv .venv
 flask --app app run
 
 
- 
-
-
 Front End-  
 
 Assuming you’re in the rank my stocks folder open a new terminal. 
@@ -61,8 +58,13 @@ Click the link to local host
 
 File Path & Description
 
-
+C:.
+|   .gitignore
+|   package-lock.json
+|   README.md
+|   
 +---client
+|   |   .env
 |   |   .gitignore
 |   |   eslint.config.js
 |   |   index.html            
@@ -72,6 +74,7 @@ File Path & Description
 |   |   vite.config.js
 |   |   
 |   +---public
+|   |       logo.png
 |   |       vite.svg
 |   |       
 |   \---src
@@ -83,40 +86,50 @@ File Path & Description
 |       |   store.jsx                                                       #Stores usestates for components like portfolioname & numslider
 |       |   
 |       +---assets
-|       |       react.svg
+|       |   |   layout.css
+|       |   |   
+|       |   \---img
+|       |           logo.png
+|       |           react.svg
 |       |       
 |       +---Components
 |       |   +---CreatePopUp
+|       |   |       nameCheck.css
+|       |   |       nameCheck.jsx
 |       |   |       numSlider.css                                   
 |       |   |       numSlider.jsx                                           #Changes the usestate of numSlider which passes through numSliderSlicer and gets saved in store.jsx
 |       |   |       numSliderSlicer.jsx
 |       |   |       popup.css
 |       |   |       popup.jsx                                               #Backbone for our popup, holds the state of the popup & close button
 |       |   |       portfolioName.css
-|       |   |       portfolioName.jsx                                       #Changes the usestate of portfolioName which passes through portfolioNameSlcier and gets saved in store.jsx
+|       |   |       portfolioName.jsx                                       #Changes the usestate of portfolioName which passes through portfolioNameSlicer and gets saved in store.jsx
 |       |   |       portfolioNameSlicer.jsx
 |       |   |       questionQueue.jsx
 |       |   |       
 |       |   \---Navbar
+|       |           authSlicer.jsx
+|       |           navbar.css
 |       |           navbar.jsx                                              #Creates the links to our different pages
 |       |           
 |       \---Pages
-|               home.jsx                                                    #Welcome message & create portfolio button functionality
-|               myPortfolios.jsx                                            #Holds user portfolios....... what the heck is a python
-|               portfolioRankings.jsx                                       #Just a header for now
-|               questionair.css
-|               questionair.jsx                                             #Queue functionality for displaying stocks & getting a stock discription I think??
-|               
+|           +---Home
+|           |       home.css
+|           |       home.jsx                                                #Welcome message & create portfolio button functionality
+|           |       questionair.css
+|           |       questionair.jsx                                         #Queue functionality for displaying stocks & getting a stock description I think??
+|           |       
+|           +---MyPortfolio
+|           |       myPortfolios.css
+|           |       myPortfolios.jsx                                        #Holds user portfolios....... what the heck is a python
+|           |       
+|           \---Rankings
+|                   portfolioRankings.jsx                                   #Just a header for now
+|                   
 \---server
-    |   app.py
-    |   Langchainintegration.py
-    |   requirements.txt
-    |   stocks.py
-    |   ticker_list.csv
-    |   
-    \---__pycache__
-            app.cpython-313.pyc
-            stocks.cpython-311.pyc
-            stocks.cpython-313.pyc
-            
+        .env
+        app.py
+        Langchainintegration.py
+        requirements.txt
+        stocks.py
+        ticker_list.csv
 
