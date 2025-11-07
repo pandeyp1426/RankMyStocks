@@ -142,6 +142,45 @@ def get_description(ticker):
         print("Error getting descrioption")
         return None
 
+# -- New helpers for key statistics --
+def get_global_quote(ticker):
+    function = "GLOBAL_QUOTE"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
+    response = requests.get(url)
+    data = response.json()
+    quote = data.get("Global Quote", {})
+    try:
+        return {
+            "open": float(quote.get("02. open")) if quote.get("02. open") else None,
+            "high": float(quote.get("03. high")) if quote.get("03. high") else None,
+            "low": float(quote.get("04. low")) if quote.get("04. low") else None,
+            "price": float(quote.get("05. price")) if quote.get("05. price") else None,
+            "volume": int(float(quote.get("06. volume"))) if quote.get("06. volume") else None,
+        }
+    except Exception:
+        return {"open": None, "high": None, "low": None, "price": None, "volume": None}
+
+def get_avg_volume_60d(ticker):
+    function = "TIME_SERIES_DAILY"
+    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
+    response = requests.get(url)
+    data = response.json()
+    series = data.get("Time Series (Daily)", {})
+    if not isinstance(series, dict):
+        return None
+    volumes = []
+    for date in sorted(series.keys(), reverse=True)[:60]:
+        day = series.get(date, {})
+        v = day.get("5. volume") or day.get("6. volume") or day.get("Volume")
+        try:
+            if v is not None:
+                volumes.append(int(float(v)))
+        except Exception:
+            continue
+    if not volumes:
+        return None
+    return sum(volumes) / len(volumes)
+
 # search for stocks by keyword (company name or symbol)
 def search_stocks(query):
     function = "SYMBOL_SEARCH"

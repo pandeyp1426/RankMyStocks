@@ -1,4 +1,5 @@
 from flask import Flask, session, jsonify, request
+import requests
 import mysql.connector
 import urllib.request
 import os
@@ -30,7 +31,16 @@ CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 
 from stocks import random_stock, get_stock_price, get_company_name
 from stocks import get_description
-from stocks import search_stocks, get_description
+from stocks import search_stocks
+from stocks import (
+    get_global_quote,
+    get_avg_volume_60d,
+    get_market_cap,
+    get_price_earnings_ratio,
+    get_dividend_yield,
+    get_52_week_high,
+    get_52_week_low,
+)
 
 
 #  Reusable DB Connection
@@ -216,10 +226,9 @@ def reroll():
         stock_list.append(stocks.random_stock())
         session["stock_list"] = stock_list
     else:
-        return jsonify({"error"}), 500
-    
-    
-    return stock_list
+        return jsonify({"error": "Invalid reroll request"}), 500
+
+    return jsonify({"status": "ok", "stock_list": stock_list})
 
 
 # ---- Pick Stock ----
@@ -295,6 +304,47 @@ def create_portfolio():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/stock-stats", methods=["GET"])
+def api_stock_stats():
+    try:
+        ticker = request.args.get("ticker", "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "Missing ticker"}), 400
+
+        name = get_company_name(ticker)
+        quote = get_global_quote(ticker) or {}
+
+        def to_float(x):
+            try:
+                return float(x) if x not in (None, "", "None") else None
+            except Exception:
+                return None
+
+        def to_int(x):
+            try:
+                return int(float(x)) if x not in (None, "", "None") else None
+            except Exception:
+                return None
+
+        payload = {
+            "ticker": ticker,
+            "name": name,
+            "marketCap": to_float(get_market_cap(ticker)),
+            "peRatio": to_float(get_price_earnings_ratio(ticker)),
+            "dividendYield": to_float(get_dividend_yield(ticker)),
+            "week52High": to_float(get_52_week_high(ticker)),
+            "week52Low": to_float(get_52_week_low(ticker)),
+            "open": quote.get("open"),
+            "high": quote.get("high"),
+            "low": quote.get("low"),
+            "price": quote.get("price"),
+            "volume": to_int(quote.get("volume")),
+            "avgVolume": to_float(get_avg_volume_60d(ticker)),
+        }
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ---- List Portfolios ----
@@ -458,6 +508,61 @@ def stock_description():
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+# ---- Daily Digest (news + LLM summary) ----
+@app.route("/api/daily-digest", methods=["GET"])
+def daily_digest():
+    try:
+        ticker = request.args.get("ticker", "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "Missing ticker"}), 400
+
+        marketaux_key = os.getenv("MARKETAUX_KEY")
+        headlines = []
+        if marketaux_key:
+            try:
+                url = (
+                    "https://api.marketaux.com/v1/news/all?"
+                    f"symbols={ticker}&filter_entities=true&language=en&limit=10&api_token={marketaux_key}"
+                )
+                r = requests.get(url, timeout=10)
+                j = r.json()
+                for item in (j.get("data") or [])[:8]:
+                    title = item.get("title")
+                    url_ = item.get("url")
+                    if title:
+                        headlines.append({"title": title, "url": url_})
+            except Exception:
+                pass
+
+        summary_text = None
+        try:
+            model = ChatOpenAI(
+                temperature=0,
+                model_name="gpt-3.5-turbo",
+                api_key=OPEN_AI_API_KEY,
+            )
+            titles = "\n".join([f"- {h['title']}" for h in headlines]) or "No relevant headlines found."
+            prompt = ChatPromptTemplate.from_messages([
+                (
+                    "system",
+                    "You are a concise financial editor. Write a 120-160 word daily digest for {ticker}. Focus on facts and avoid hype."
+                ),
+                ("user", "Headlines for {ticker}:\n{titles}\nSummarize today's developments."),
+            ])
+            chain = prompt | model
+            resp = chain.invoke({"ticker": ticker, "titles": titles})
+            summary_text = resp.content
+        except Exception:
+            summary_text = None
+
+        return jsonify({
+            "ticker": ticker,
+            "summary": summary_text or "No summary available.",
+            "sources": headlines,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ---- Delete Portfolio ----
 @app.route("/api/delete-portfolio/<int:portfolio_id>", methods=["DELETE"])

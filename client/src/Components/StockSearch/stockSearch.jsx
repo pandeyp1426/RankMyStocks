@@ -11,6 +11,7 @@ export function StockSearch() {
   const [result, setResult] = useState(null); // { ticker, name, description, price }
   const [results, setResults] = useState([]); // typeahead suggestions
   const [showPopup, setShowPopup] = useState(false);
+  const [stats, setStats] = useState(null);
 
   // Debounced query for suggestions
   const debouncedQuery = useMemo(() => query.trim(), [query]);
@@ -54,6 +55,11 @@ export function StockSearch() {
       if (data && !data.error) {
         setResult(data);
         setShowPopup(true);
+        try {
+          const sres = await fetch(`http://127.0.0.1:5002/api/stock-stats?ticker=${encodeURIComponent(data.ticker)}`);
+          const sdata = await sres.json();
+          setStats(!sdata.error ? sdata : null);
+        } catch {}
       } else {
         setError(data?.error || "No data found.");
       }
@@ -78,6 +84,11 @@ export function StockSearch() {
       if (data && !data.error) {
         setResult(data);
         setShowPopup(true);
+        try {
+          const sres = await fetch(`http://127.0.0.1:5002/api/stock-stats?ticker=${encodeURIComponent(item.ticker)}`);
+          const sdata = await sres.json();
+          setStats(!sdata.error ? sdata : null);
+        } catch {}
       } else {
         setError(data?.error || "No data found.");
       }
@@ -88,31 +99,7 @@ export function StockSearch() {
     }
   }
 
-  async function loadDescription(item) {
-    setSelected(item);
-    setDescription("");
-    setDescLoading(true);
-    setError("");
-    try {
-      const res = await fetch(
-        `http://127.0.0.1:5002/api/stock-description?ticker=${encodeURIComponent(
-          item.ticker
-        )}`
-      );
-      const data = await res.json();
-      if (data && data.description) {
-        setDescription(data.description);
-      } else if (data && data.error) {
-        setError(data.error);
-      } else {
-        setError("No description available.");
-      }
-    } catch (e) {
-      setError("Failed to load description.");
-    } finally {
-      setDescLoading(false);
-    }
-  }
+  // description fetch removed; using key statistics + initial overview instead
 
   return (
     <section className="stock-search">
@@ -164,6 +151,24 @@ export function StockSearch() {
               <p className="stock-search__description" style={{ textAlign: "left" }}>
                 {result.description || "No description available."}
               </p>
+
+              {stats && (
+                <div className="key-stats">
+                  <h4>Key statistics</h4>
+                  <div className="key-stats-grid">
+                    <div className="key-stat"><span className="label">Market cap</span><span className="value">{fmtMoney(stats.marketCap, true)}</span></div>
+                    <div className="key-stat"><span className="label">P/E ratio</span><span className="value">{fmtNum(stats.peRatio)}</span></div>
+                    <div className="key-stat"><span className="label">Dividend yield</span><span className="value">{fmtPct(stats.dividendYield)}</span></div>
+                    <div className="key-stat"><span className="label">Average volume</span><span className="value">{fmtCompact(stats.avgVolume)}</span></div>
+                    <div className="key-stat"><span className="label">High today</span><span className="value">{fmtMoney(stats.high)}</span></div>
+                    <div className="key-stat"><span className="label">Low today</span><span className="value">{fmtMoney(stats.low)}</span></div>
+                    <div className="key-stat"><span className="label">Open price</span><span className="value">{fmtMoney(stats.open)}</span></div>
+                    <div className="key-stat"><span className="label">Volume</span><span className="value">{fmtCompact(stats.volume)}</span></div>
+                    <div className="key-stat"><span className="label">52 Week high</span><span className="value">{fmtMoney(stats.week52High)}</span></div>
+                    <div className="key-stat"><span className="label">52 Week low</span><span className="value">{fmtMoney(stats.week52Low)}</span></div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="stock-search__status">No data loaded</div>
@@ -173,3 +178,14 @@ export function StockSearch() {
     </section>
   );
 }
+
+// formatting helpers used in stats display
+function fmtMoney(n, abbreviate = false) {
+  if (n == null) return "—";
+  const val = Number(n);
+  if (abbreviate) return "$" + fmtCompact(val);
+  return "$" + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtNum(n) { if (n == null) return "—"; return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+function fmtPct(n) { if (n == null || n === 0) return "—"; const pct = Number(n) * 100; return pct.toFixed(2) + "%"; }
+function fmtCompact(n) { if (n == null) return "—"; return Number(n).toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 2 }); }

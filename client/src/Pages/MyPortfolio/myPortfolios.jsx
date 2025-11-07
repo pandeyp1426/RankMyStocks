@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./myPortfolios.css";
+import { Popup } from "../../Components/CreatePopUp/popup.jsx";
 import deleteIcon from "../../assets/img/delete.png";
 
 // Converts any date format to a safe numeric timestamp
@@ -23,6 +24,12 @@ export function MyPortfolios() {
   const [error, setError] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [portfolioToDelete, setPortfolioToDelete] = useState(null);
+  const [showPortfolio, setShowPortfolio] = useState(false);
+  const [activePortfolio, setActivePortfolio] = useState(null);
+  const [activeStock, setActiveStock] = useState(null);
+  const [stockStats, setStockStats] = useState(null);
+  const [digest, setDigest] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
 
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
@@ -81,6 +88,35 @@ export function MyPortfolios() {
     }
 
     return sorted;
+  }
+
+  function openPortfolio(p) {
+    setActivePortfolio(p);
+    setActiveStock(null);
+    setStockStats(null);
+    setDigest(null);
+    setShowPortfolio(true);
+  }
+
+  async function loadStockDetails(ticker) {
+    setLoadingDetails(true);
+    setActiveStock({ ticker });
+    setStockStats(null);
+    setDigest(null);
+    try {
+      const [sres, dres] = await Promise.all([
+        fetch(`${API_URL}/api/stock-stats?ticker=${encodeURIComponent(ticker)}`),
+        fetch(`${API_URL}/api/daily-digest?ticker=${encodeURIComponent(ticker)}`)
+      ]);
+      const sdata = await sres.json();
+      const ddata = await dres.json();
+      setStockStats(!sdata.error ? sdata : null);
+      setDigest(!ddata.error ? ddata : null);
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoadingDetails(false);
+    }
   }
 
   // Handle dropdown change
@@ -157,7 +193,14 @@ export function MyPortfolios() {
             const shouldScroll = p.stocks && p.stocks.length > 4;
 
             return (
-              <div key={p.id} className="portfolio-card">
+              <div
+                key={p.id}
+                className="portfolio-card"
+                onClick={(e) => {
+                  if ((e.target.closest && e.target.closest('.delete-btn')) || e.target.classList.contains('delete-btn')) return;
+                  openPortfolio(p);
+                }}
+              >
                 <div className="portfolio-header">
                    <h2>{p.name}</h2>
                      <button className="delete-btn"
@@ -236,6 +279,70 @@ export function MyPortfolios() {
           })}
         </div>
       )}
+      <Popup trigger={showPortfolio} setTrigger={setShowPortfolio}>
+        {activePortfolio ? (
+          <div className="portfolio-modal">
+            <div className="pm-left">
+              <h3 className="pm-title">{activePortfolio.name}</h3>
+              <ul className="pm-stock-list">
+                {(activePortfolio.stocks || []).map((s, i) => (
+                  <li key={i} className="pm-stock-item" onClick={() => loadStockDetails(s.ticker)}>
+                    <span>{s.ticker}</span>
+                    <span className="pm-price">${Number(s.price || 0).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="pm-right">
+              {!activeStock && <p className="pm-hint">Select a stock to see Key Insights and Daily Digest.</p>}
+              {loadingDetails && <p className="pm-hint">Loading details…</p>}
+              {stockStats && (
+                <div className="pm-stats">
+                  <h4>Key Insights</h4>
+                  <div className="pm-grid">
+                    <div><span className="label">Market cap</span><span className="value">{fmtMoney(stockStats.marketCap, true)}</span></div>
+                    <div><span className="label">P/E ratio</span><span className="value">{fmtNum(stockStats.peRatio)}</span></div>
+                    <div><span className="label">Dividend yield</span><span className="value">{fmtPct(stockStats.dividendYield)}</span></div>
+                    <div><span className="label">Open</span><span className="value">{fmtMoney(stockStats.open)}</span></div>
+                    <div><span className="label">High</span><span className="value">{fmtMoney(stockStats.high)}</span></div>
+                    <div><span className="label">Low</span><span className="value">{fmtMoney(stockStats.low)}</span></div>
+                    <div><span className="label">52w High</span><span className="value">{fmtMoney(stockStats.week52High)}</span></div>
+                    <div><span className="label">52w Low</span><span className="value">{fmtMoney(stockStats.week52Low)}</span></div>
+                    <div><span className="label">Avg volume</span><span className="value">{fmtCompact(stockStats.avgVolume)}</span></div>
+                    <div><span className="label">Volume</span><span className="value">{fmtCompact(stockStats.volume)}</span></div>
+                  </div>
+                </div>
+              )}
+              {digest && (
+                <div className="pm-digest">
+                  <h4>Daily Digest</h4>
+                  <p className="digest-text">{digest.summary}</p>
+                  {digest.sources && digest.sources.length > 0 && (
+                    <ul className="sources">
+                      {digest.sources.slice(0, 3).map((src, i) => (
+                        <li key={i}><a href={src.url} target="_blank" rel="noreferrer">{src.title}</a></li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="pm-hint">Loading…</p>
+        )}
+      </Popup>
     </div>
   );
 }
+
+// formatting helpers
+function fmtMoney(n, abbreviate = false) {
+  if (n == null) return "—";
+  const val = Number(n);
+  if (abbreviate) return "$" + fmtCompact(val);
+  return "$" + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtNum(n) { if (n == null) return "—"; return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+function fmtPct(n) { if (n == null || n === 0) return "—"; const pct = Number(n) * 100; return pct.toFixed(2) + "%"; }
+function fmtCompact(n) { if (n == null) return "—"; return Number(n).toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 2 }); }
