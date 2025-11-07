@@ -111,8 +111,6 @@ def get_stock_data():
         response1 = chain.invoke({"stock": stock1})
         response2 = chain.invoke({"stock": stock2})
 
-    
-
         return jsonify({
             "ticker1": ticker1,
             "name1": name1,
@@ -128,6 +126,15 @@ def get_stock_data():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/webhook-test/fe5ae33c-7e9b-4034-92cd-a7eab1a8f1d0", methods=["POST"])
+def webhook_listener():
+    data = request.json
+    print("Received webhook data:", data)
+    return {"status": "success", "message": "Webhook received"}, 200
+        
+
+        
 
 # ---- Initialize Session ----
 
