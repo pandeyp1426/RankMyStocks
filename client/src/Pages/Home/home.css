@@ -159,38 +159,44 @@ html, body {
 body {
   background-attachment: fixed;
 }
-/* ---------- MAIN PORTFOLIO SECTION ---------- */
-.main-portfolio {
-  width: 90%;
-  max-width: 1000px;
-  margin-bottom: 120px;
+.home .main-portfolio {
+  width: 85%;
+  max-width: 1200px;
+  margin: 100px auto 140px auto;
   display: flex;
   justify-content: center;
 }
 
-.portfolio-card {
+.home .portfolio-card {
   width: 100%;
-  max-width: 700px;
-  background: #fff;
-  border-radius: 20px;
-  padding: 2.5rem;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  background: linear-gradient(#fff, #fff) padding-box, linear-gradient(90deg, #7163f1, #9b6df8) border-box;
+  border: 2px solid transparent;
+  border-radius: 28px;
+  padding: 3.5rem 3rem 8rem; /* extra bottom to match longer box */
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.12);
   color: #111;
+  min-height: 750px; /* makes the white box noticeably taller */
+  height: auto; /* allows natural growth if content expands */
+  overflow: hidden; /* clip inner content to rounded corners*/
 }
 
 
-.portfolio-header {
+
+.home .portfolio-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.portfolio-header h2 {
+/* removed portfolio-title-group; delta now sits below total value */
+
+.home .portfolio-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
 }
 
-.timeframe-select {
+.home .timeframe-select {
   border: 1px solid #ccc;
   border-radius: 10px;
   padding: 0.4rem 0.8rem;
@@ -201,29 +207,38 @@ body {
 }
 
 
-.portfolio-value {
+.home .portfolio-value {
   font-size: 2.8rem;
   font-weight: 800;
   margin-top: 0.5rem;
 }
 
-.portfolio-sub {
+.home .portfolio-delta {
+  margin-top: 0.25rem;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.home .portfolio-sub {
   color: #00c27a;
   font-weight: 600;
   margin-top: 0.3rem;
 }
 
-.portfolio-chart {
+.home .portfolio-chart {
   background: linear-gradient(180deg, #e8f9f8, #f1f8fe);
-  border-radius: 12px;
-  height: 250px;
-  margin-top: 2rem;
+  border-radius: 16px;
+  min-height: 600px; /* approx target */
+  margin-top: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
+  padding: 40px 20px 30px;
+  box-sizing: border-box;
 }
 
-.chart-placeholder {
+.home .chart-placeholder {
   color: #555;
   opacity: 0.6;
   font-size: 1.1rem;

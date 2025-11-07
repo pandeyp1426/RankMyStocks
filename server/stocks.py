@@ -142,6 +142,27 @@ def get_description(ticker):
         print("Error getting descrioption")
         return None
 
+# search for stocks by keyword (company name or symbol)
+def search_stocks(query):
+    function = "SYMBOL_SEARCH"
+    url = f"https://www.alphavantage.co/query?function={function}&keywords={query}&apikey={API_KEY}"
+    response = requests.get(url)
+    data = response.json()
+    matches = data.get("bestMatches", [])
+    results = []
+    for item in matches:
+        try:
+            symbol = item.get("1. symbol")
+            name = item.get("2. name")
+            if symbol and name:
+                results.append({
+                    "ticker": symbol,
+                    "name": name
+                })
+        except Exception:
+            continue
+    return results
+
 def list_to_queue(list):
     stock_queue = queue.Queue()
     for item in list:
