@@ -306,6 +306,35 @@ def create_portfolio():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+@app.route("/api/portfolios/<int:portfolio_id>", methods=["PUT"])
+def rename_portfolio(portfolio_id):
+    data = request.get_json(silent=True) or {}
+    new_name = (data.get("name") or "").strip()
+    if not new_name:
+        return jsonify({"error": "Missing or invalid name"}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE portfolios SET name = %s WHERE id = %s",
+            (new_name, portfolio_id)
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({"error": "Portfolio not found"}), 404
+        return jsonify({"status": "success", "id": portfolio_id, "name": new_name})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 @app.route("/api/stock-stats", methods=["GET"])
 def api_stock_stats():
     try:

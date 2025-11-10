@@ -32,6 +32,9 @@ export function MyPortfolios() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const activeStockCount = activePortfolio?.stocks?.length || 0;
   const enableStockScroll = activeStockCount > 5;
+  const [editingId, setEditingId] = useState(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const [renamePending, setRenamePending] = useState(false);
 
 
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
@@ -136,23 +139,94 @@ export function MyPortfolios() {
   }
   // Handle portfolio deletion
   async function handleDelete(id) {
-  try {
-    const res = await fetch(`${API_URL}/api/delete-portfolio/${id}`, {
-      method: "DELETE",
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch(`${API_URL}/api/delete-portfolio/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
 
-    if (res.ok) {
-      setPortfolios((prev) => prev.filter((p) => p.id !== id));
-      setFiltered((prev) => prev.filter((p) => p.id !== id));
-    } else {
-      alert(data.error || "Failed to delete portfolio");
+      if (res.ok) {
+        setPortfolios((prev) => prev.filter((p) => p.id !== id));
+        setFiltered((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        alert(data.error || "Failed to delete portfolio");
+      }
+    } catch (err) {
+      console.error("Error deleting portfolio:", err);
+      alert("An error occurred while deleting");
     }
-  } catch (err) {
-    console.error("Error deleting portfolio:", err);
-    alert("An error occurred while deleting");
   }
-}
+
+  function beginRename(portfolio) {
+    setEditingId(portfolio.id);
+    setNameDraft(portfolio.name || "");
+    setRenamePending(false);
+  }
+
+  function cancelRename() {
+    setEditingId(null);
+    setNameDraft("");
+    setRenamePending(false);
+  }
+
+  function handleRenameKey(event, portfolio) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleRename(portfolio);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRename();
+    }
+  }
+
+  async function handleRename(portfolio) {
+    if (editingId !== portfolio.id) {
+      beginRename(portfolio);
+      return;
+    }
+    const trimmed = nameDraft.trim();
+    const currentName = portfolio.name || "";
+    if (!trimmed) {
+      alert("Portfolio name cannot be empty.");
+      return;
+    }
+    if (trimmed === currentName) {
+      cancelRename();
+      return;
+    }
+
+    try {
+      setRenamePending(true);
+      const res = await fetch(`${API_URL}/api/portfolios/${portfolio.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to rename portfolio");
+        setRenamePending(false);
+        return;
+      }
+
+      setPortfolios((prev) => {
+        const updated = prev.map((p) =>
+          p.id === portfolio.id ? { ...p, name: trimmed } : p
+        );
+        setFiltered(sortPortfolios(updated, sortOption, ascending));
+        return updated;
+      });
+      setActivePortfolio((prev) =>
+        prev && prev.id === portfolio.id ? { ...prev, name: trimmed } : prev
+      );
+      cancelRename();
+    } catch (err) {
+      console.error("Error renaming portfolio:", err);
+      alert("An error occurred while renaming");
+    } finally {
+      setRenamePending(false);
+    }
+  }
 
 
   // --- Render UI ---
@@ -193,29 +267,98 @@ export function MyPortfolios() {
               : "0.00";
 
             const shouldScroll = p.stocks && p.stocks.length > 4;
+            const isEditing = editingId === p.id;
+            const trimmedDraft = nameDraft.trim();
+            const saveDisabled =
+              !isEditing ||
+              renamePending ||
+              !trimmedDraft ||
+              trimmedDraft === (p.name || "");
 
             return (
               <div
                 key={p.id}
                 className="portfolio-card"
                 onClick={(e) => {
-                  if ((e.target.closest && e.target.closest('.delete-btn')) || e.target.classList.contains('delete-btn')) return;
+                  const isAction =
+                    (e.target.closest && e.target.closest(".card-action-btn")) ||
+                    e.target.classList.contains("card-action-btn");
+                  if (isAction) return;
                   openPortfolio(p);
                 }}
               >
                 <div className="portfolio-header">
-                   <h2>{p.name}</h2>
-                    <button className="delete-btn"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setShowConfirm(true);
-                      setPortfolioToDelete(p.id);
-                    }}
-                    title="Delete portfolio"
+                  {isEditing ? (
+                    <input
+                      className="rename-input"
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => handleRenameKey(e, p)}
+                      autoFocus
+                      disabled={renamePending}
+                      maxLength={40}
+                      placeholder="Portfolio name"
+                    />
+                  ) : (
+                    <h2
+                      onDoubleClick={(event) => {
+                        event.stopPropagation();
+                        beginRename(p);
+                      }}
+                      title="Double-click to rename"
                     >
-                     <img src={deleteIcon} alt="Delete" className="trash-icon" />
-                     </button>
-                     </div>
+                      {p.name}
+                    </h2>
+                  )}
+                  {isEditing ? (
+                    <div className="rename-inline-actions">
+                      <button
+                        className="rename-save card-action-btn"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleRename(p);
+                        }}
+                        disabled={saveDisabled}
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="rename-cancel card-action-btn"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          cancelRename();
+                        }}
+                        disabled={renamePending}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="card-actions">
+                      <button
+                        className="rename-btn card-action-btn"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          beginRename(p);
+                        }}
+                      >
+                        Rename
+                      </button>
+                      <button
+                        className="delete-btn card-action-btn"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setShowConfirm(true);
+                          setPortfolioToDelete(p.id);
+                        }}
+                        title="Delete portfolio"
+                      >
+                        <img src={deleteIcon} alt="Delete" className="trash-icon" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="portfolio-summary">
                   <p>
                     <strong>Total Stocks:</strong> {p.stocks?.length || 0}
