@@ -727,9 +727,8 @@ def daily_digest():
             prompt = ChatPromptTemplate.from_messages([
                 (
                     "system",
-                    "You are a concise financial editor delivering an actionable 24-hour digest for investors. "
-                    "Prioritize confirmed developments such as major sales, earnings guidance, tariffs, interest-rate or political moves, "
-                    "and connect them to valuation metrics."
+                    "You craft clear, easy-to-read investor digests that explain why a ticker moved over the last 24 hours. "
+                    "Use simple language, cite only the provided facts, and never speculate about the future."
                 ),
                 (
                     "user",
@@ -738,9 +737,13 @@ def daily_digest():
                     "Fundamentals snapshot:\n{fundamentals}\n"
                     "Headlines and notes:\n{headlines}\n"
                     "Instructions:\n"
-                    "- Reference only the supplied information.\n"
-                    "- If no fresh headlines exist, say so explicitly and lean on valuation/macro context.\n"
-                    "- Keep the digest under 160 words, ideally 3 short bullets plus a closing watch-item."
+                    "- Start with one line containing a headline that states the main reason the stock moved (e.g., 'EARNINGS BOOST SNDX').\n"
+                    "- After the headline, include a blank line.\n"
+                    "- Follow with 2-4 short sections. Each section must be on its own line, begin with an ALL-CAPS header followed by a colon (e.g., 'EARNINGS:'), and contain 1-2 simple sentences about confirmed developments such as analyst calls, earnings, company announcements, sector trends, macro forces, or notable volume shifts.\n"
+                    "- Leave a blank line between sections for readability.\n"
+                    "- If news flow is thin, say that clearly and lean on valuation or macro context without making predictions.\n"
+                    "- Mention only what actually happened; do not provide forecasts or investment advice.\n"
+                    "- Stay under 160 words and keep the tone factual and easy to read."
                 ),
             ])
             chain = prompt | model

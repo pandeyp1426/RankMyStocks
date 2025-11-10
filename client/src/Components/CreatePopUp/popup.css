@@ -17,6 +17,24 @@
   overflow-x: hidden;
   text-align: center;
 }
+.popup {
+  scrollbar-width: thin;
+  scrollbar-color: #00dfea rgba(255, 255, 255, 0.08);
+}
+.popup::-webkit-scrollbar {
+  width: 8px;
+}
+.popup::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.popup::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00f9ff, #00aee0);
+  border-radius: 12px;
+}
+.popup::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #4afcff, #00a0ff);
+}
 
 .popup h3 { /* Title styling */
   margin-bottom: 15px;
