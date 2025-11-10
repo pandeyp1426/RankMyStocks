@@ -6,6 +6,7 @@ import os
 import random
 import time
 import csv
+from datetime import datetime, timedelta, timezone
 from flask_cors import CORS
 from dotenv import load_dotenv
 import urllib.parse
@@ -517,23 +518,204 @@ def daily_digest():
         if not ticker:
             return jsonify({"error": "Missing ticker"}), 400
 
+        now_utc = datetime.now(timezone.utc)
+        cutoff = now_utc - timedelta(hours=24)
+
+        def safe_float(value):
+            try:
+                if value in (None, "", "None"):
+                    return None
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        def parse_timestamp(ts):
+            if not ts:
+                return None
+            ts = ts.strip()
+            try:
+                return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+            clean_ts = ts.replace("Z", "")
+            for fmt, length in (("%Y%m%dT%H%M%S", 15), ("%Y%m%dT%H%M", 13)):
+                try:
+                    dt = datetime.strptime(clean_ts[:length], fmt)
+                    return dt.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+            return None
+
+        def fmt_currency(value, decimals=2):
+            if value is None:
+                return "n/a"
+            return f"${value:,.{decimals}f}"
+
+        def fmt_signed_currency(value):
+            if value is None:
+                return "n/a"
+            sign = "+" if value >= 0 else "-"
+            return f"{sign}${abs(value):,.2f}"
+
+        def fmt_float(value, decimals=2):
+            if value is None:
+                return "n/a"
+            return f"{value:,.{decimals}f}"
+
+        def fmt_market_cap(value):
+            if value is None:
+                return "n/a"
+            trillion = 1_000_000_000_000
+            billion = 1_000_000_000
+            million = 1_000_000
+            magnitude = abs(value)
+            if magnitude >= trillion:
+                return f"${value / trillion:.2f}T"
+            if magnitude >= billion:
+                return f"${value / billion:.2f}B"
+            if magnitude >= million:
+                return f"${value / million:.2f}M"
+            return f"${value:,.0f}"
+
+        def fmt_percent(value):
+            if value is None:
+                return "n/a"
+            return f"{value * 100:.2f}%"
+
+        headlines_raw = []
+        seen_titles = set()
+
+        def normalize_source(source):
+            if isinstance(source, dict):
+                return source.get("name") or source.get("title")
+            return source
+
+        def add_headline(title, url_, source=None, summary=None, published_at=None, sentiment=None):
+            if not title:
+                return
+            normalized_title = title.strip()
+            if not normalized_title:
+                return
+            key = normalized_title.lower()
+            if key in seen_titles:
+                return
+            published_dt = parse_timestamp(published_at)
+            headlines_raw.append({
+                "title": normalized_title,
+                "url": url_,
+                "source": normalize_source(source),
+                "summary": summary.strip() if isinstance(summary, str) else summary,
+                "sentiment": sentiment,
+                "published_at": published_dt,
+            })
+            seen_titles.add(key)
+
         marketaux_key = os.getenv("MARKETAUX_KEY")
-        headlines = []
         if marketaux_key:
             try:
                 url = (
                     "https://api.marketaux.com/v1/news/all?"
-                    f"symbols={ticker}&filter_entities=true&language=en&limit=10&api_token={marketaux_key}"
+                    f"symbols={ticker}&filter_entities=true&language=en&limit=15&api_token={marketaux_key}"
                 )
                 r = requests.get(url, timeout=10)
                 j = r.json()
-                for item in (j.get("data") or [])[:8]:
-                    title = item.get("title")
-                    url_ = item.get("url")
-                    if title:
-                        headlines.append({"title": title, "url": url_})
+                for item in j.get("data") or []:
+                    add_headline(
+                        title=item.get("title"),
+                        url_=item.get("url"),
+                        source=item.get("source"),
+                        summary=item.get("description") or item.get("snippet"),
+                        published_at=item.get("published_at"),
+                        sentiment=item.get("sentiment"),
+                    )
             except Exception:
                 pass
+
+        alpha_key = (
+            os.getenv("ALPHAVANTAGE_KEY")
+            or os.getenv("ALPHA_VANTAGE_KEY")
+            or os.getenv("ALPHAVANTAGE_API_KEY")
+            or os.getenv("ALPHA_VANTAGE_API_KEY")
+            or os.getenv("ALPHAVANTAGE_NEWS_KEY")
+            or getattr(stocks, "API_KEY", None)
+        )
+        if alpha_key:
+            try:
+                time_from = cutoff.strftime("%Y%m%dT%H%M")
+                alpha_url = (
+                    "https://www.alphavantage.co/query?"
+                    f"function=NEWS_SENTIMENT&tickers={ticker}&limit=50&time_from={time_from}&apikey={alpha_key}"
+                )
+                alpha_resp = requests.get(alpha_url, timeout=10)
+                alpha_json = alpha_resp.json()
+                for item in alpha_json.get("feed") or []:
+                    add_headline(
+                        title=item.get("title"),
+                        url_=item.get("url"),
+                        source=item.get("source"),
+                        summary=item.get("summary"),
+                        published_at=item.get("time_published"),
+                        sentiment=item.get("overall_sentiment_label"),
+                    )
+            except Exception:
+                pass
+
+        headlines_raw.sort(
+            key=lambda h: h["published_at"] or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True
+        )
+        recent_headlines = [
+            h for h in headlines_raw
+            if h["published_at"] is None or h["published_at"] >= cutoff
+        ]
+        if recent_headlines:
+            selected_headlines = recent_headlines[:8]
+            coverage_window = "last 24 hours"
+        else:
+            selected_headlines = headlines_raw[:5]
+            coverage_window = "latest available (older than 24h)" if headlines_raw else "no verified coverage"
+
+        def format_headlines_for_prompt(items):
+            lines = []
+            for item in items:
+                ts = item["published_at"].strftime("%Y-%m-%d %H:%M UTC") if item["published_at"] else "time n/a"
+                line = f"{ts} - {item['title']}"
+                if item.get("source"):
+                    line += f" ({item['source']})"
+                details = []
+                if item.get("summary"):
+                    details.append(item["summary"])
+                if item.get("sentiment"):
+                    details.append(f"sentiment: {item['sentiment']}")
+                if details:
+                    line += " | " + " ".join(details)
+                lines.append(line)
+            return "\n".join(lines)
+
+        headlines_context = format_headlines_for_prompt(selected_headlines) if selected_headlines else ""
+        if not headlines_context:
+            headlines_context = "No verified coverage surfaced in the last 24 hours."
+
+        quote = get_global_quote(ticker) or {}
+        price = quote.get("price")
+        day_open = quote.get("open")
+        day_change = (price - day_open) if (price is not None and day_open is not None) else None
+        day_high = quote.get("high")
+        day_low = quote.get("low")
+        volume = quote.get("volume")
+
+        pe_ratio = safe_float(get_price_earnings_ratio(ticker))
+        market_cap = safe_float(get_market_cap(ticker))
+        dividend_yield = safe_float(get_dividend_yield(ticker))
+        week52_high = safe_float(get_52_week_high(ticker))
+        week52_low = safe_float(get_52_week_low(ticker))
+
+        fundamentals_context = "\n".join([
+            f"Price: {fmt_currency(price)} | Change vs open: {fmt_signed_currency(day_change)}",
+            f"Intraday range: {fmt_currency(day_low)} - {fmt_currency(day_high)} | Volume: {fmt_float(volume, 0)}",
+            f"Market cap: {fmt_market_cap(market_cap)} | P/E: {fmt_float(pe_ratio, 1)}",
+            f"Dividend yield: {fmt_percent(dividend_yield)} | 52-week range: {fmt_currency(week52_low)} - {fmt_currency(week52_high)}",
+        ])
 
         summary_text = None
         try:
@@ -542,24 +724,47 @@ def daily_digest():
                 model_name="gpt-3.5-turbo",
                 api_key=OPEN_AI_API_KEY,
             )
-            titles = "\n".join([f"- {h['title']}" for h in headlines]) or "No relevant headlines found."
             prompt = ChatPromptTemplate.from_messages([
                 (
                     "system",
-                    "You are a concise financial editor. Write a 120-160 word daily digest for {ticker}. Focus on facts and avoid hype."
+                    "You are a concise financial editor delivering an actionable 24-hour digest for investors. "
+                    "Prioritize confirmed developments such as major sales, earnings guidance, tariffs, interest-rate or political moves, "
+                    "and connect them to valuation metrics."
                 ),
-                ("user", "Headlines for {ticker}:\n{titles}\nSummarize today's developments."),
+                (
+                    "user",
+                    "Ticker: {ticker}\n"
+                    "Coverage window: {coverage_window}\n"
+                    "Fundamentals snapshot:\n{fundamentals}\n"
+                    "Headlines and notes:\n{headlines}\n"
+                    "Instructions:\n"
+                    "- Reference only the supplied information.\n"
+                    "- If no fresh headlines exist, say so explicitly and lean on valuation/macro context.\n"
+                    "- Keep the digest under 160 words, ideally 3 short bullets plus a closing watch-item."
+                ),
             ])
             chain = prompt | model
-            resp = chain.invoke({"ticker": ticker, "titles": titles})
+            resp = chain.invoke({
+                "ticker": ticker,
+                "coverage_window": coverage_window,
+                "fundamentals": fundamentals_context,
+                "headlines": headlines_context,
+            })
             summary_text = resp.content
         except Exception:
             summary_text = None
 
+        sources_payload = [{
+            "title": item["title"],
+            "url": item["url"],
+            "source": item.get("source"),
+            "publishedAt": item["published_at"].isoformat() if item["published_at"] else None,
+        } for item in selected_headlines] if selected_headlines else []
+
         return jsonify({
             "ticker": ticker,
-            "summary": summary_text or "No summary available.",
-            "sources": headlines,
+            "summary": summary_text or "Unable to generate digest at this time.",
+            "sources": sources_payload,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
