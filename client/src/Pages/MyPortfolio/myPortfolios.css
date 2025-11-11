@@ -82,19 +82,36 @@
 
 /* --- Portfolio Card --- */
 .portfolio-card {
-  background: #ffffff;
-  border-radius: 18px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-  padding: 1.5rem;
+  position: relative;
+  background: linear-gradient(180deg, rgba(11, 8, 31, 0.9) 0%, rgba(33, 21, 71, 0.92) 100%);
+  border-radius: 28px;
+  padding: 1.65rem;
   display: flex;
   flex-direction: column;
-  transition: all 0.25s ease;
-  height: 360px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  height: 380px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 18px 40px rgba(5, 1, 22, 0.55);
+  color: #f6f7ff;
+  overflow: hidden;
+}
+.portfolio-card::after {
+  content: "";
+  position: absolute;
+  inset: 16px 16px auto auto;
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(circle, rgba(0, 249, 255, 0.35), transparent 60%);
+  filter: blur(6px);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .portfolio-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 26px 50px rgba(5, 1, 22, 0.65);
 }
 
 /* --- Header inside Card --- */
@@ -107,30 +124,32 @@
 }
 .portfolio-header h2 {
   flex: 1;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #3b2c7e;
+  color: #fdfdff;
   margin: 0;
   cursor: default;
+  letter-spacing: 0.4px;
 }
 .portfolio-header h2:hover {
-  color: #2a1f63;
+  color: #9ddcff;
 }
 .rename-input {
   flex: 1;
-  border: 1px solid rgba(59, 44, 126, 0.35);
-  border-radius: 10px;
-  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 0.45rem 0.75rem;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #2a1f63;
-  background: rgba(59, 44, 126, 0.08);
-  transition: border 0.2s ease, box-shadow 0.2s ease;
+  color: #f6f6ff;
+  background: rgba(255, 255, 255, 0.08);
+  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .rename-input:focus {
   outline: none;
-  border-color: #00a3ff;
-  box-shadow: 0 0 0 2px rgba(0, 163, 255, 0.2);
+  border-color: #00f9ff;
+  box-shadow: 0 0 0 2px rgba(0, 249, 255, 0.25);
+  background: rgba(0, 10, 40, 0.65);
 }
 .card-actions {
   display: flex;
@@ -153,8 +172,8 @@
 .rename-btn {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(0, 249, 255, 0.7);
-  color: #00a3ff;
+  border: 1px solid rgba(0, 249, 255, 0.6);
+  color: #00f9ff;
   font-weight: 600;
   font-size: 0.8rem;
   background: rgba(0, 249, 255, 0.12);
@@ -162,7 +181,7 @@
 }
 .rename-btn:hover {
   background: rgba(0, 249, 255, 0.25);
-  color: #0048ff;
+  color: #012c4a;
   transform: translateY(-1px);
 }
 .rename-btn:active {
@@ -179,11 +198,11 @@
 }
 .rename-save {
   background: linear-gradient(120deg, #00f9ff, #00a3ff);
-  color: #0c0c21;
+  color: #061227;
 }
 .rename-cancel {
-  background: rgba(0, 0, 0, 0.08);
-  color: #3b2c7e;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e5ff;
 }
 .rename-save:disabled {
   opacity: 0.5;
@@ -196,34 +215,42 @@
 
 /* --- Portfolio Summary Box --- */
 .portfolio-summary {
-  background: #f4f4f7;
-  border-radius: 12px;
-  padding: 0.8rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
   font-size: 0.95rem;
-  color: #333;
-  line-height: 1.5;
-  margin-bottom: 0.8rem;
+  color: #dfe8ff;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+.portfolio-summary strong {
+  color: #ffffff;
 }
 .change-indicator {
   font-weight: 700;
   margin: 0.35rem 0;
 }
 .change-positive {
-  color: #17a672;
+  color: #51ffca;
 }
 .change-negative {
-  color: #c0392b;
+  color: #ffa2a2;
 }
 .change-neutral {
-  color: #b3a300;
+  color: #f4c76b;
 }
 
 /* --- Stock List Container --- */
 .stock-list-container {
-  background: #fafafa;
-  border-radius: 12px;
-  padding: 0.5rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 0.75rem 0.9rem;
   flex-grow: 1;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
 }
 
 .scrollable {
@@ -237,12 +264,12 @@
 }
 
 .scrollable::-webkit-scrollbar-thumb {
-  background: #b8aafc;
+  background: rgba(0, 249, 255, 0.45);
   border-radius: 10px;
 }
 
 .scrollable::-webkit-scrollbar-thumb:hover {
-  background: #9b8dfd;
+  background: rgba(0, 249, 255, 0.7);
 }
 
 /* --- Stock Items --- */
@@ -255,8 +282,8 @@
 .stock-item {
   display: flex;
   justify-content: space-between;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid #e5e5e5;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .stock-item:last-child {
@@ -264,13 +291,15 @@
 }
 
 .ticker {
-  color: #333;
+  color: #f8f9ff;
   font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
 .price {
-  color: #1db954;
+  color: #25f3c2;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Loading / Empty States --- */
@@ -313,16 +342,21 @@
     justify-content: flex-start;
   }
 }
+.portfolio-card .delete-btn img {
+  filter: brightness(0) invert(1);
+}
+
+.portfolio-card .delete-btn:hover img {
+  transform: scale(1.15);
+  filter: brightness(1.4);
+}
+
 .delete-btn img {
   width: 22px;
   height: 22px;
   transition: transform 0.15s ease, filter 0.2s ease;
 }
 
-.delete-btn:hover img {
-  transform: scale(1.15);
-  filter: brightness(0) saturate(100%) invert(28%) sepia(87%) saturate(6180%) hue-rotate(352deg) brightness(95%) contrast(94%);
-}
 .delete-btn {
   background: transparent;
   border: none;
