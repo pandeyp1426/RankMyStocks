@@ -348,7 +348,7 @@
 
 .portfolio-card .delete-btn:hover img {
   transform: scale(1.15);
-  filter: brightness(1.4);
+  filter: brightness(0) saturate(100%) invert(37%) sepia(86%) saturate(4440%) hue-rotate(342deg) brightness(98%) contrast(97%);
 }
 
 .delete-btn img {
