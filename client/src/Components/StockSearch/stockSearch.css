@@ -96,55 +96,53 @@
 
 .stock-search__results {
   list-style: none;
-  padding: 6px;
+  padding: 12px;
   margin: 8px 0 0;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 4px);
-  background: rgba(12, 10, 26, 0.95);
+  background: rgba(14, 20, 46, 0.92);
   border-radius: 18px;
-  border: 1px solid rgba(0, 249, 255, 0.2);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-  z-index: 5;
-  max-height: 230px;
-  overflow-y: auto;
-}
-
-.stock-search__results::-webkit-scrollbar {
-  width: 6px;
-}
-.stock-search__results::-webkit-scrollbar-thumb {
-  background: rgba(0, 249, 255, 0.5);
-  border-radius: 10px;
+  border: 1px solid rgba(0, 249, 255, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .stock-search__result {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.8rem;
+  padding: 12px 14px;
+  border-radius: 14px;
   cursor: pointer;
   border: 1px solid transparent;
-  margin-bottom: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  transition: transform 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: transform 0.1s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.stock-search__result:last-child {
+  margin-bottom: 0;
 }
 
 .stock-search__result:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  border-color: rgba(0, 246, 255, 0.25);
-  background: rgba(0, 0, 0, 0.18);
+  border-color: rgba(0, 246, 255, 0.45);
+  background: rgba(0, 246, 255, 0.08);
 }
 
 .stock-search__result-name {
-  font-weight: 700;
+  font-weight: 600;
+  color: #f8f9ff;
+  line-height: 1.35;
 }
 
 .stock-search__result-ticker {
+  align-self: center;
   color: #00f9ff; /* cyan accent like hero */
   font-weight: 800;
+  font-size: 0.95rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 249, 255, 0.12);
+  border: 1px solid rgba(0, 249, 255, 0.3);
+  letter-spacing: 0.02em;
 }
 
 .stock-search__details {

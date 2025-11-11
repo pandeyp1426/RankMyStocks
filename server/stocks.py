@@ -5,6 +5,7 @@ import requests
 import queue
 import secrets
 import logging
+import os
 from datetime import datetime, timedelta
 from time import time as _time
 import threading
@@ -17,6 +18,8 @@ logger = logging.getLogger(__name__)
 _INFO_CACHE = {}
 _CACHE_TTL_SECONDS = 60 * 15
 _cache_lock = threading.Lock()
+_TICKER_CACHE = None
+_ticker_cache_lock = threading.Lock()
 
 
 def generate_ticker_list(size):
@@ -186,8 +189,9 @@ def search_stocks(query):
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         data = resp.json()
-    except Exception:
-        return []
+    except Exception as exc:
+        logger.warning("Yahoo search failed for %s: %s", query, exc)
+        data = {}
     results = []
     for item in data.get("quotes", []):
         symbol = item.get("symbol")
@@ -197,7 +201,45 @@ def search_stocks(query):
                 "ticker": symbol,
                 "name": name
             })
-    return results
+    if results:
+        return results
+    return _search_local_tickers(query)
+
+
+def _load_ticker_cache():
+    global _TICKER_CACHE
+    with _ticker_cache_lock:
+        if _TICKER_CACHE is not None:
+            return _TICKER_CACHE
+        path = os.path.join(os.path.dirname(__file__), "ticker_list.csv")
+        rows = []
+        try:
+            with open(path, mode="r", newline="", encoding="utf-8") as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    symbol = (row.get("Symbol") or "").strip()
+                    name = (row.get("Name") or "").strip()
+                    if symbol:
+                        rows.append({"Symbol": symbol, "Name": name})
+        except FileNotFoundError:
+            logger.warning("ticker_list.csv not found for local search fallback")
+        _TICKER_CACHE = rows
+        return _TICKER_CACHE
+
+
+def _search_local_tickers(query, limit=8):
+    q = (query or "").strip().lower()
+    if not q:
+        return []
+    matches = []
+    for row in _load_ticker_cache():
+        symbol = row["Symbol"]
+        name = row["Name"] or symbol
+        if symbol.lower().startswith(q) or name.lower().startswith(q):
+            matches.append({"ticker": symbol, "name": name})
+        if len(matches) >= limit:
+            break
+    return matches
 
 
 def list_to_queue(list):
