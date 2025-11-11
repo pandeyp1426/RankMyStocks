@@ -68,7 +68,9 @@ export function PortfolioRankings() {
   if (error) {
     return (
       <section className="rankings-page">
-        <div className="rankings-card filler error">Failed to load leaderboard: {error}</div>
+        <div className="rankings-card filler error">
+          Failed to load leaderboard. Please check your connection and try again.
+        </div>
       </section>
     );
   }
