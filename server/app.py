@@ -41,6 +41,8 @@ from stocks import (
     get_dividend_yield,
     get_52_week_high,
     get_52_week_low,
+    get_bulk_quotes,
+    get_stock_snapshot,
 )
 
 
@@ -98,11 +100,13 @@ def get_stock_data():
 
         price1 = get_stock_price(ticker1)
         name1 = get_company_name(ticker1)
+        quote1 = get_global_quote(ticker1) or {}
         
 
         ticker2 = session.get("stock2", "No stock2 in session")
         price2 = get_stock_price(ticker2)
         name2 = get_company_name(ticker2)
+        quote2 = get_global_quote(ticker2) or {}
         
         
         stock1 = ticker1
@@ -128,12 +132,16 @@ def get_stock_data():
             "ticker1": ticker1,
             "name1": name1,
             "price1": float(price1) if price1 else None,
+            "change1": quote1.get("change"),
+            "changePercent1": quote1.get("changePercent"),
             
             "response1": response1.content,
             
             "ticker2": ticker2,
             "name2": name2,
             "price2": float(price2) if price2 else None,
+            "change2": quote2.get("change"),
+            "changePercent2": quote2.get("changePercent"),
             
             "response2": response2.content,
         })
@@ -378,8 +386,9 @@ def api_stock_stats():
 
 
 # ---- List Portfolios ----
-@app.route("/api/portfolios", methods=["GET"])
-def list_portfolios():
+def _load_portfolios_from_db():
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -397,10 +406,7 @@ def list_portfolios():
             ORDER BY p.created_at DESC
         """)
         rows = cursor.fetchall()
-        cursor.close()
-        conn.close()
 
-        # Group rows into portfolio objects
         portfolios = {}
         for r in rows:
             pid = r["id"]
@@ -427,15 +433,81 @@ def list_portfolios():
                     "price": price_value
                 })
 
-        # Convert to list sorted by created_at DESC (newest first)
+        for payload in portfolios.values():
+            payload["stockCount"] = len(payload.get("stocks", []))
+
+        return portfolios
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@app.route("/api/portfolios", methods=["GET"])
+def list_portfolios():
+    try:
+        portfolios_map = _load_portfolios_from_db()
         sorted_portfolios = sorted(
-            portfolios.values(),
+            portfolios_map.values(),
             key=lambda x: x["created_at"] or "",
             reverse=True
         )
 
+        attach_portfolio_performance(sorted_portfolios)
+
         return jsonify(sorted_portfolios)
 
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def attach_portfolio_performance(portfolios):
+    def safe_float(val):
+        try:
+            if val in (None, "", "None"):
+                return None
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+
+    tickers = {
+        (stock.get("ticker") or "").strip().upper()
+        for p in portfolios
+        for stock in p.get("stocks", [])
+        if (stock.get("ticker") or "").strip()
+    }
+
+    quote_cache = get_bulk_quotes(list(tickers)) if tickers else {}
+
+    for portfolio in portfolios:
+        invested = 0.0
+        current = 0.0
+        for stock in portfolio.get("stocks", []):
+            stored = safe_float(stock.get("price")) or 0.0
+            invested += stored
+            ticker = (stock.get("ticker") or "").strip().upper()
+            quote = quote_cache.get(ticker) or {}
+            latest = safe_float(quote.get("price"))
+            current += latest if latest is not None else stored
+
+        portfolio["investedValue"] = round(invested, 2)
+        portfolio["currentValue"] = round(current, 2)
+        if invested > 0:
+            change_pct = ((current - invested) / invested) * 100
+            portfolio["changePct"] = round(change_pct, 2)
+        else:
+            portfolio["changePct"] = None
+
+
+@app.route("/api/portfolio-leaderboard", methods=["GET"])
+def portfolio_leaderboard():
+    try:
+        portfolios_map = _load_portfolios_from_db()
+        items = list(portfolios_map.values())
+        attach_portfolio_performance(items)
+        ranked = sorted(items, key=lambda p: p.get("currentValue") or 0.0, reverse=True)
+        return jsonify(ranked)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     
@@ -534,8 +606,25 @@ def stock_description():
         return jsonify({
             "ticker": ticker,
             "name": name,
-            "description": desc
+            "description": desc,
+            "price": float(get_stock_price(ticker)) if get_stock_price(ticker) else None,
         })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/stock-info", methods=["GET"])
+def stock_info():
+    try:
+        ticker = request.args.get("ticker", "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "Missing ticker"}), 400
+        snapshot = get_stock_snapshot(ticker)
+        if not snapshot.get("price") and not snapshot.get("name"):
+            return jsonify({"error": "Ticker not found"}), 404
+        if not snapshot.get("description"):
+            snapshot["description"] = get_description(ticker)
+        return jsonify(snapshot)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

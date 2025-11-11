@@ -156,6 +156,10 @@
   background: #fde8e8;
   color: #d22e2e;
 }
+.stock-change.neutral {
+  background: #f0f0f0;
+  color: #666;
+}
 
 /* ===== VS Text ===== */
 .vs-text {

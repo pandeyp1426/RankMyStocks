@@ -204,6 +204,19 @@
   line-height: 1.5;
   margin-bottom: 0.8rem;
 }
+.change-indicator {
+  font-weight: 700;
+  margin: 0.35rem 0;
+}
+.change-positive {
+  color: #17a672;
+}
+.change-negative {
+  color: #c0392b;
+}
+.change-neutral {
+  color: #b3a300;
+}
 
 /* --- Stock List Container --- */
 .stock-list-container {
@@ -363,6 +376,14 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+.pm-rename {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pm-title {
+  margin: 0 0 8px 0;
 }
 .pm-title { margin: 0 0 8px 0; }
 .pm-stock-pane {

@@ -1,0 +1,224 @@
+.rankings-page {
+  min-height: 100vh;
+  padding: 3rem 1.5rem 4rem;
+  background: linear-gradient(180deg, #1d1d2b 0%, #2f2160 60%, #3c2786 100%);
+  color: #fff;
+  font-family: "Inter", sans-serif;
+}
+
+.rankings-hero {
+  max-width: 1100px;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.35rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 0.4rem;
+}
+
+.rankings-hero h1 {
+  margin: 0;
+  font-size: 2.5rem;
+}
+
+.lede {
+  margin-top: 0.5rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+}
+
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.hero-metrics > div {
+  background: rgba(12, 9, 48, 0.55);
+  border-radius: 18px;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.hero-metrics span {
+  display: block;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.35rem;
+}
+
+.hero-metrics strong {
+  font-size: 1.4rem;
+}
+
+.rankings-toolbar {
+  max-width: 1100px;
+  margin: 0 auto 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.sort-pills {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sort-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  color: #fff;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-pill.active {
+  border-color: rgba(0, 249, 255, 0.9);
+  background: rgba(0, 249, 255, 0.2);
+  color: #0c0c21;
+  font-weight: 600;
+}
+
+.rankings-toolbar .order-toggle {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: #fff;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.rankings-toolbar .order-toggle:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.leaderboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 1rem 1.2rem;
+  border: 1px solid transparent;
+  backdrop-filter: blur(6px);
+}
+
+.leaderboard-row.top-1 {
+  border-color: rgba(255, 208, 0, 0.8);
+  box-shadow: 0 0 25px rgba(255, 208, 0, 0.25);
+}
+
+.leaderboard-row.top-2 {
+  border-color: rgba(192, 192, 192, 0.8);
+}
+
+.leaderboard-row.top-3 {
+  border-color: rgba(205, 127, 50, 0.8);
+}
+
+.rank-badge {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.leaderboard-name h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.leaderboard-name span {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.leaderboard-metrics {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.leaderboard-metrics span {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.leaderboard-metrics strong {
+  font-size: 1.1rem;
+}
+
+.leaderboard-metrics .change-positive {
+  color: #17a672;
+}
+
+.leaderboard-metrics .change-negative {
+  color: #ff6b6b;
+}
+
+.leaderboard-metrics .change-neutral {
+  color: #ffd166;
+}
+
+.rankings-card.filler {
+  margin: 0 auto;
+  max-width: 800px;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 18px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.rankings-card.error {
+  border: 1px solid rgba(255, 95, 109, 0.7);
+  color: #ffd4d4;
+}
+
+@media (max-width: 900px) {
+  .rankings-hero {
+    flex-direction: column;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 60px 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .leaderboard-metrics {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .leaderboard-metrics {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+}

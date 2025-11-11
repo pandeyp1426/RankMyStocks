@@ -127,8 +127,10 @@ const fetchStockData = async () => {
         ticker: data.ticker1,
         name: data.name1,
         price: data.price1,
-        description: data.response1
-      })
+        description: data.response1,
+        change: data.change1,
+        changePercent: data.changePercent1
+      });
   }
 
     //set stock2 with data from flask session
@@ -137,7 +139,9 @@ const fetchStockData = async () => {
         ticker: data.ticker2,
         name: data.name2,
         price: data.price2,
-        description: data.response2
+        description: data.response2,
+        change: data.change2,
+        changePercent: data.changePercent2
       });
   }
 
@@ -234,6 +238,27 @@ const sendStockPick = async (stock) => {
     await fetchStockData();
   };
 
+  const formatChangeClass = (stock) => {
+    const change = Number(stock?.change ?? stock?.changePercent);
+    if (Number.isNaN(change)) return "neutral";
+    return change >= 0 ? "positive" : "negative";
+  };
+
+  const formatChange = (stock) => {
+    const change = Number(stock?.change);
+    const pct = Number(stock?.changePercent);
+    const parts = [];
+    if (!Number.isNaN(change)) {
+      const sign = change > 0 ? "+" : "";
+      parts.push(`${sign}${change.toFixed(2)}`);
+    }
+    if (!Number.isNaN(pct)) {
+      const signPct = pct > 0 ? "+" : "";
+      parts.push(`${signPct}${pct.toFixed(2)}%`);
+    }
+    return parts.length ? parts.join(" | ") : "—";
+  };
+
   // Save portfolio to backend
   const savePortfolio = (chosenStock) => {
     const name = portfolioName || "Untitled Portfolio";
@@ -283,8 +308,8 @@ const sendStockPick = async (stock) => {
               <button className="info-icon" title={stock1.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock1.ticker}</h3>
               <p className="stock-name">{stock1.name}</p>
-              <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
-              <p className="stock-change positive">+2.34 (+1.35%)</p>
+              <p className="stock-price">${Number(stock1.price || 0).toFixed(2)}</p>
+              <p className={`stock-change ${formatChangeClass(stock1)}`}>{formatChange(stock1)}</p>
             </div>
           )}
 
@@ -300,8 +325,8 @@ const sendStockPick = async (stock) => {
               <button className="info-icon" title={stock2.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock2.ticker}</h3>
               <p className="stock-name">{stock2.name}</p>
-              <p className="stock-price">${Number(stock2.price).toFixed(2)}</p>
-              <p className="stock-change negative">-1.23 (-1.23%)</p>
+              <p className="stock-price">${Number(stock2.price || 0).toFixed(2)}</p>
+              <p className={`stock-change ${formatChangeClass(stock2)}`}>{formatChange(stock2)}</p>
             </div>
           )}
         </div>

@@ -101,6 +101,8 @@ export function MyPortfolios() {
     setStockStats(null);
     setDigest(null);
     setShowPortfolio(true);
+    setEditingId(null);
+    setNameDraft("");
   }
 
   async function loadStockDetails(ticker) {
@@ -267,13 +269,25 @@ export function MyPortfolios() {
               : "0.00";
 
             const shouldScroll = p.stocks && p.stocks.length > 4;
-            const isEditing = editingId === p.id;
-            const trimmedDraft = nameDraft.trim();
-            const saveDisabled =
-              !isEditing ||
-              renamePending ||
-              !trimmedDraft ||
-              trimmedDraft === (p.name || "");
+
+            const investedValue =
+              Number(
+                p.investedValue ??
+                (p.stocks ? p.stocks.reduce((acc, s) => acc + (s.price || 0), 0) : 0)
+              );
+            const currentValue = Number(
+              p.currentValue ?? investedValue
+            );
+            const changePct =
+              typeof p.changePct === "number" ? p.changePct : null;
+            const changeClass =
+              changePct === null
+                ? "change-neutral"
+                : changePct > 0
+                  ? "change-positive"
+                  : changePct < 0
+                    ? "change-negative"
+                    : "change-neutral";
 
             return (
               <div
@@ -288,84 +302,37 @@ export function MyPortfolios() {
                 }}
               >
                 <div className="portfolio-header">
-                  {isEditing ? (
-                    <input
-                      className="rename-input"
-                      value={nameDraft}
-                      onChange={(e) => setNameDraft(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => handleRenameKey(e, p)}
-                      autoFocus
-                      disabled={renamePending}
-                      maxLength={40}
-                      placeholder="Portfolio name"
-                    />
-                  ) : (
-                    <h2
-                      onDoubleClick={(event) => {
+                  <h2>{p.name}</h2>
+                  <div className="card-actions">
+                    <button
+                      className="delete-btn card-action-btn"
+                      onClick={(event) => {
                         event.stopPropagation();
-                        beginRename(p);
+                        setShowConfirm(true);
+                        setPortfolioToDelete(p.id);
                       }}
-                      title="Double-click to rename"
+                      title="Delete portfolio"
                     >
-                      {p.name}
-                    </h2>
-                  )}
-                  {isEditing ? (
-                    <div className="rename-inline-actions">
-                      <button
-                        className="rename-save card-action-btn"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleRename(p);
-                        }}
-                        disabled={saveDisabled}
-                      >
-                        Save
-                      </button>
-                      <button
-                        className="rename-cancel card-action-btn"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          cancelRename();
-                        }}
-                        disabled={renamePending}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="card-actions">
-                      <button
-                        className="rename-btn card-action-btn"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          beginRename(p);
-                        }}
-                      >
-                        Rename
-                      </button>
-                      <button
-                        className="delete-btn card-action-btn"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setShowConfirm(true);
-                          setPortfolioToDelete(p.id);
-                        }}
-                        title="Delete portfolio"
-                      >
-                        <img src={deleteIcon} alt="Delete" className="trash-icon" />
-                      </button>
-                    </div>
-                  )}
+                      <img src={deleteIcon} alt="Delete" className="trash-icon" />
+                    </button>
+                  </div>
                 </div>
                 <div className="portfolio-summary">
                   <p>
                     <strong>Total Stocks:</strong> {p.stocks?.length || 0}
                   </p>
                   <p>
-                    <strong>Portfolio Value:</strong> ${totalValue}
+                    <strong>Invested:</strong> ${investedValue.toFixed(2)}
                   </p>
+                  <p>
+                    <strong>Current Value:</strong> ${currentValue.toFixed(2)}
+                  </p>
+                  {changePct !== null && (
+                    <p className={`change-indicator ${changeClass}`}>
+                      {changePct > 0 ? "+" : ""}
+                      {changePct.toFixed(2)}%
+                    </p>
+                  )}
                   <p>
                     <strong>Created:</strong>{" "}
                     {p.created_at
@@ -429,11 +396,51 @@ export function MyPortfolios() {
           </div>
         </div>
       )}
-      <Popup trigger={showPortfolio} setTrigger={setShowPortfolio}>
+      <Popup trigger={showPortfolio} setTrigger={setShowPortfolio} dimBackground={false}>
         {activePortfolio ? (
           <div className="portfolio-modal">
             <div className="pm-left">
-              <h3 className="pm-title">{activePortfolio.name}</h3>
+              {editingId === activePortfolio.id ? (
+                <div className="pm-rename">
+                  <input
+                    className="rename-input"
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onKeyDown={(e) => handleRenameKey(e, activePortfolio)}
+                    autoFocus
+                    disabled={renamePending}
+                    maxLength={60}
+                    placeholder="Portfolio name"
+                  />
+                  <div className="rename-inline-actions">
+                    <button
+                      className="rename-save card-action-btn"
+                      onClick={() => handleRename(activePortfolio)}
+                      disabled={
+                        renamePending ||
+                        nameDraft.trim() === (activePortfolio.name || "")
+                      }
+                    >
+                      Save
+                    </button>
+                    <button
+                      className="rename-cancel card-action-btn"
+                      onClick={cancelRename}
+                      disabled={renamePending}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <h3
+                  className="pm-title"
+                  onDoubleClick={() => beginRename(activePortfolio)}
+                  title="Double-click to rename"
+                >
+                  {activePortfolio.name}
+                </h3>
+              )}
               <div className={`pm-stock-pane ${enableStockScroll ? "pm-stock-pane--scroll" : ""}`}>
                 <ul className="pm-stock-list">
                   {(activePortfolio.stocks || []).map((s, i) => (

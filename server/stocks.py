@@ -4,203 +4,201 @@ import random
 import requests
 import queue
 import secrets
+import logging
 from datetime import datetime, timedelta
+from time import time as _time
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
-#premium API Key 75 calls perminute
-API_KEY = "YN7QP69QPEBTJVKO"
+import yfinance as yf
 
 
-#generates random list of tickers based on given size
+logger = logging.getLogger(__name__)
+_INFO_CACHE = {}
+_CACHE_TTL_SECONDS = 60 * 15
+_cache_lock = threading.Lock()
+
+
 def generate_ticker_list(size):
-    tickers = [] 
-    for i in range(size):
+    tickers = []
+    for _ in range(size):
         tickers.append(random_stock())
     return tickers
 
-#gets random ticker form a list of tickers
+
 def random_stock():
-    with open("ticker_list.csv", mode='r') as file:
+    with open("ticker_list.csv", mode="r") as file:
         reader = csv.reader(file)
         stock_list = list(reader)
-    
     if not stock_list:
         return None
-    
     return random.choice(stock_list)[0]
 
-#gets the stocks last close price
-def get_stock_price(ticker):
-    currentDate = datetime.now()
-    previousDate = currentDate - timedelta(days=1)
-    day_int = previousDate.weekday()
-    if day_int == 5:
-        previousDate = previousDate - timedelta(days=1)
-    if day_int == 6:
-        previousDate = previousDate - timedelta(days=2)
-    print(day_int)
-    dateString = previousDate.strftime("%Y-%m-%d")
 
-    
-    function = "TIME_SERIES_DAILY"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    data = json.dumps(data, indent=4)
+def _get_ticker_info(ticker):
+    ticker = (ticker or "").strip().upper()
+    if not ticker:
+        return {}
+
+    now_ts = _time()
+    with _cache_lock:
+        cached = _INFO_CACHE.get(ticker)
+    if cached and now_ts - cached["timestamp"] < _CACHE_TTL_SECONDS:
+        return cached["info"]
+
     try:
-        data = json.loads(data)
-        close = data['Time Series (Daily)'][dateString]['4. close']
-        return close
-    except (KeyError, IndexError):
-        print("Error retrieving stock price for ticker:", ticker)
-        return None
+        info = yf.Ticker(ticker).info or {}
+    except Exception as exc:
+        logger.warning("Yahoo Finance request failed for %s: %s", ticker, exc)
+        info = {}
+
+    with _cache_lock:
+        _INFO_CACHE[ticker] = {"info": info, "timestamp": now_ts}
+    return info
+
+
+def get_stock_price(ticker):
+    info = _get_ticker_info(ticker)
+    return info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
+
 
 def get_company_name(ticker):
-    function = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    try:
-        name = data["Name"]
-        return name
-    except KeyError:
-        return None
+    info = _get_ticker_info(ticker)
+    return info.get("longName") or info.get("shortName")
+
 
 def get_price_earnings_ratio(ticker):
-    function = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    try:
-        pe_ratio = data["PERatio"]
-        return pe_ratio
-    except KeyError:
-        return None
+    info = _get_ticker_info(ticker)
+    return info.get("trailingPE") or info.get("forwardPE")
+
 
 def get_market_cap(ticker):
-    function = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    try:
-        market_cap = data["MarketCapitalization"]
-        return market_cap
-    except KeyError:
-        return None
+    info = _get_ticker_info(ticker)
+    return info.get("marketCap")
+
 
 def get_dividend_yield(ticker):
-    function = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    try:
-        dividend_yield = data["DividendYield"]
-        return dividend_yield
-    except KeyError:
-        return None
+    info = _get_ticker_info(ticker)
+    return info.get("dividendYield")
+
 
 def get_52_week_high(ticker):
-    function = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    try:
-        high_52_week = data["52WeekHigh"]
-        return high_52_week
-    except KeyError:
-        return None
+    info = _get_ticker_info(ticker)
+    return info.get("fiftyTwoWeekHigh")
+
 
 def get_52_week_low(ticker):
-    function = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    try:
-        low_52_week = data["52WeekLow"]
-        return low_52_week
-    except KeyError:
-        return None
+    info = _get_ticker_info(ticker)
+    return info.get("fiftyTwoWeekLow")
+
 
 def get_overview(ticker):
-    function = "OVERVIEW"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    data = json.dumps(data, indent=4)
-    try:
-        return data
-    except KeyError:
-        return None
+    info = _get_ticker_info(ticker)
+    return json.dumps(info, indent=4)
+
 
 def get_description(ticker):
-    description = get_overview(ticker)
-    
-    try:
-        description = json.loads(description)
-        description = description["Description"]
-        return description
-    except KeyError:
-        print("Error getting descrioption")
-        return None
+    info = _get_ticker_info(ticker)
+    return info.get("longBusinessSummary")
 
-# -- New helpers for key statistics --
+
 def get_global_quote(ticker):
-    function = "GLOBAL_QUOTE"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    quote = data.get("Global Quote", {})
+    info = _get_ticker_info(ticker)
     try:
         return {
-            "open": float(quote.get("02. open")) if quote.get("02. open") else None,
-            "high": float(quote.get("03. high")) if quote.get("03. high") else None,
-            "low": float(quote.get("04. low")) if quote.get("04. low") else None,
-            "price": float(quote.get("05. price")) if quote.get("05. price") else None,
-            "volume": int(float(quote.get("06. volume"))) if quote.get("06. volume") else None,
+            "open": float(info.get("open")) if info.get("open") else None,
+            "high": float(info.get("dayHigh")) if info.get("dayHigh") else None,
+            "low": float(info.get("dayLow")) if info.get("dayLow") else None,
+            "price": float(info.get("currentPrice")) if info.get("currentPrice") else None,
+            "volume": int(info.get("volume")) if info.get("volume") else None,
+            "change": float(info.get("regularMarketChange")) if info.get("regularMarketChange") else None,
+            "changePercent": float(info.get("regularMarketChangePercent")) if info.get("regularMarketChangePercent") else None,
         }
     except Exception:
-        return {"open": None, "high": None, "low": None, "price": None, "volume": None}
+        return {
+            "open": None,
+            "high": None,
+            "low": None,
+            "price": None,
+            "volume": None,
+            "change": None,
+            "changePercent": None,
+        }
+
 
 def get_avg_volume_60d(ticker):
-    function = "TIME_SERIES_DAILY"
-    url = f"https://www.alphavantage.co/query?function={function}&symbol={ticker}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    series = data.get("Time Series (Daily)", {})
-    if not isinstance(series, dict):
-        return None
-    volumes = []
-    for date in sorted(series.keys(), reverse=True)[:60]:
-        day = series.get(date, {})
-        v = day.get("5. volume") or day.get("6. volume") or day.get("Volume")
-        try:
-            if v is not None:
-                volumes.append(int(float(v)))
-        except Exception:
-            continue
-    if not volumes:
-        return None
-    return sum(volumes) / len(volumes)
+    info = _get_ticker_info(ticker)
+    return info.get("averageVolume")
+
+
+def get_bulk_quotes(tickers):
+    unique = sorted({(t or "").strip().upper() for t in tickers if t})
+    if not unique:
+        return {}
+
+    results = {}
+
+    def fetch(symbol):
+        info = _get_ticker_info(symbol)
+        return symbol, {
+            "price": info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose"),
+            "change": info.get("regularMarketChange"),
+            "changePercent": info.get("regularMarketChangePercent"),
+        }
+
+    max_workers = min(8, len(unique))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for symbol, data in executor.map(fetch, unique):
+            results[symbol] = data
+    return results
+
+
+def get_stock_snapshot(ticker):
+    info = _get_ticker_info(ticker)
+    if not info:
+        return {}
+    ticker = (ticker or "").strip().upper()
+    return {
+        "ticker": ticker,
+        "name": info.get("longName") or info.get("shortName") or ticker,
+        "price": info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose"),
+        "change": info.get("regularMarketChange"),
+        "changePercent": info.get("regularMarketChangePercent"),
+        "description": info.get("longBusinessSummary"),
+        "marketCap": info.get("marketCap"),
+        "peRatio": info.get("trailingPE") or info.get("forwardPE"),
+        "dividendYield": info.get("dividendYield"),
+        "avgVolume": info.get("averageVolume"),
+        "high": info.get("dayHigh"),
+        "low": info.get("dayLow"),
+        "open": info.get("open"),
+        "week52High": info.get("fiftyTwoWeekHigh"),
+        "week52Low": info.get("fiftyTwoWeekLow"),
+        "volume": info.get("volume"),
+    }
 
 # search for stocks by keyword (company name or symbol)
 def search_stocks(query):
-    function = "SYMBOL_SEARCH"
-    url = f"https://www.alphavantage.co/query?function={function}&keywords={query}&apikey={API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-    matches = data.get("bestMatches", [])
+    if not query:
+        return []
+    url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=6"
+    try:
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return []
     results = []
-    for item in matches:
-        try:
-            symbol = item.get("1. symbol")
-            name = item.get("2. name")
-            if symbol and name:
-                results.append({
-                    "ticker": symbol,
-                    "name": name
-                })
-        except Exception:
-            continue
+    for item in data.get("quotes", []):
+        symbol = item.get("symbol")
+        name = item.get("longname") or item.get("shortname")
+        if symbol and name:
+            results.append({
+                "ticker": symbol,
+                "name": name
+            })
     return results
+
 
 def list_to_queue(list):
     stock_queue = queue.Queue()
@@ -208,11 +206,13 @@ def list_to_queue(list):
         stock_queue.put(item)
     return stock_queue
 
+
 def queue_to_list(queue):
     stock_list = []
     while not queue.empty():
         list.append(queue.get())
     return list
+
 
 def generate_stock_queue(questionQTY):
     stock_queue = queue.Queue()
@@ -244,5 +244,3 @@ def test_pick_stocks(stock_queue):
 
 #portfolio = test_pick_stocks(stock_queue)
 #print("Your portfolio:", portfolio)
-
-
