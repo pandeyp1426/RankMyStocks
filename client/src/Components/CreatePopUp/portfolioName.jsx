@@ -16,7 +16,7 @@ export function PortfolioName() {
     <div className="popup-textbox-container">
       <input
         type="text"
-        id="myInput"
+        id="portfolioNameInput"
         value={portfolioName}
         onChange={handleChange}
         placeholder="Name your portfolio"

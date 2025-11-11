@@ -9,13 +9,13 @@
   border-radius: 32px;
   padding: 30px 40px;
   color: white;
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
   min-width: 70%;
   max-width: 95vw;
   max-height: 90vh;
   overflow-y: auto;
   overflow-x: hidden;
   text-align: center;
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
 }
 .popup {
   scrollbar-width: thin;

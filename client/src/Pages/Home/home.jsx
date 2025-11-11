@@ -5,6 +5,7 @@ import { PortfolioName } from "../../Components/CreatePopUp/portfolioName.jsx";
 import { NumSlider } from "../../Components/CreatePopUp/numSlider.jsx";
 import { useSelector } from "react-redux";
 import "./home.css";
+import "../../Components/CreatePopUp/createPortfolioPopup.css";
 import appPreview from "../../assets/img/logo.png"; // you can replace this with any preview image
 import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
 import { StockSearch } from "../../Components/StockSearch/stockSearch.jsx";
@@ -21,6 +22,7 @@ export function Home() {
   const [chartPct, setChartPct] = useState(null);
   const [lineData, setLineData] = useState([]);
   const [candleData, setCandleData] = useState([]);
+  const questionQTYSelected = useSelector((state) => state.questionQTY.value);
 
   // ✅ Fetch all portfolios and calculate total
   useEffect(() => {
@@ -110,10 +112,24 @@ export function Home() {
           </button>
 
           <Popup trigger={buttonPopup} setTrigger={setButtonPopup}>
-            <h3 className="popup-title">Enter Portfolio Name</h3>
-            <PortfolioName />
-            <NumSlider />
-            <NameCheck/>
+            <div className="create-portfolio-card">
+              <div className="create-portfolio-header">
+                <p className="eyebrow">New Portfolio</p>
+                <h3>Set up your next run</h3>
+                <p>
+                  Give this batch a name and choose how many comparison rounds you
+                  want to complete. Currently set to {questionQTYSelected} rounds.
+                </p>
+              </div>
+              <div className="create-portfolio-field">
+                <label htmlFor="portfolioNameInput">Portfolio name</label>
+                <PortfolioName />
+              </div>
+              <div className="create-portfolio-field">
+                <NumSlider />
+              </div>
+              <NameCheck />
+            </div>
           </Popup>
         </div>
 

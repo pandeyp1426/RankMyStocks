@@ -334,9 +334,24 @@ const sendStockPick = async (stock) => {
 
         {isComplete ? (
           <div className="complete-box">
-            <h3>All rounds completed!</h3>
-            <p>Your selections have been saved to the portfolio.</p>
-            <Link to="/myPortfolios" className="hero-button" style={{textDecoration:'none'}}>View My Portfolios</Link>
+            <div className="complete-icon">✓</div>
+            <h3>All rounds completed</h3>
+            <p className="complete-subtitle">
+              Your picks are locked in and saved under <strong>{portfolioName || "Your Portfolio"}</strong>.
+            </p>
+            <div className="complete-summary">
+              <div>
+                <span>Rounds played</span>
+                <strong>{questionQTY}</strong>
+              </div>
+              <div>
+                <span>Stocks saved</span>
+                <strong>{selectedStocks.length}</strong>
+              </div>
+            </div>
+            <Link to="/myPortfolios" className="complete-btn" style={{textDecoration:'none'}}>
+              View My Portfolios
+            </Link>
           </div>
         ) : (
           <button className="reroll-button" onClick={handleReroll}>
