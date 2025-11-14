@@ -5,7 +5,13 @@ const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
 const SORT_MODES = [
   { id: "value", label: "Top Value" },
   { id: "stocks", label: "Most Stocks" },
+  { id: "change", label: "% Change" },
 ];
+
+function normalizeChange(value, asc) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return asc ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+}
 
 export function PortfolioRankings() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -23,7 +29,9 @@ export function PortfolioRankings() {
         const res = await fetch(`${API_URL}/api/portfolio-leaderboard`);
         const data = await res.json();
         if (!ignore) {
-          if (!res.ok || data?.error) throw new Error(data?.message || data?.error || "Failed to load leaderboard");
+          if (!res.ok || data?.error) {
+            throw new Error(data?.message || data?.error || "Failed to load leaderboard");
+          }
           setLeaderboard(Array.isArray(data) ? data : []);
         }
       } catch (err) {
@@ -44,6 +52,11 @@ export function PortfolioRankings() {
       switch (sortMode) {
         case "stocks":
           return ascending ? a.stockCount - b.stockCount : b.stockCount - a.stockCount;
+        case "change": {
+          const normalizedA = normalizeChange(a.changePct, ascending);
+          const normalizedB = normalizeChange(b.changePct, ascending);
+          return ascending ? normalizedA - normalizedB : normalizedB - normalizedA;
+        }
         case "value":
         default:
           return ascending
@@ -56,11 +69,13 @@ export function PortfolioRankings() {
 
   const totalAssets = sorted.reduce((sum, p) => sum + (p.currentValue || 0), 0);
   const totalHoldings = sorted.reduce((sum, p) => sum + (p.stockCount || 0), 0);
+  const isChangeSort = sortMode === "change";
+  const directionText = ascending ? "lowest -> highest" : "highest -> lowest";
 
   if (loading) {
     return (
       <section className="rankings-page">
-        <div className="rankings-card filler">Loading leaderboard…</div>
+        <div className="rankings-card filler">Loading leaderboard...</div>
       </section>
     );
   }
@@ -113,10 +128,21 @@ export function PortfolioRankings() {
             </button>
           ))}
         </div>
-        <button className="order-toggle" onClick={() => setAscending((prev) => !prev)}>
-          {ascending ? "Ascending ↑" : "Descending ↓"}
+        <button
+          className="order-toggle"
+          onClick={() => setAscending((prev) => !prev)}
+          aria-label={`Toggle sort order (currently ${ascending ? "ascending" : "descending"})`}
+          title={`Sort ${ascending ? "ascending" : "descending"}`}
+        >
+          <span aria-hidden="true">{ascending ? "↑" : "↓"}</span>
         </button>
       </div>
+      {isChangeSort && (
+        <p className="ranking-note">
+          <span className="note-accent" aria-hidden="true"></span>
+          <strong>Ranking portfolios by percentage change.</strong> Displaying {directionText}.
+        </p>
+      )}
 
       <div className="leaderboard">
         {sorted.map((item, index) => (
@@ -124,7 +150,7 @@ export function PortfolioRankings() {
             <div className="rank-badge">#{index + 1}</div>
             <div className="leaderboard-name">
               <h3>{item.name || "Unnamed Portfolio"}</h3>
-              <span>{item.created_at ? new Date(item.created_at).toLocaleDateString() : "—"}</span>
+              <span>{item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}</span>
             </div>
             <div className="leaderboard-metrics">
               <div>
@@ -152,12 +178,12 @@ export function PortfolioRankings() {
 }
 
 function fmtMoney(value) {
-  if (value == null) return "—";
+  if (value == null) return "-";
   return "$" + value.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
 function formatChange(value) {
-  if (typeof value !== "number") return "—";
+  if (typeof value !== "number") return "-";
   const prefix = value > 0 ? "+" : "";
   return `${prefix}${value.toFixed(2)}%`;
 }

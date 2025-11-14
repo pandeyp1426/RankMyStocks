@@ -15,6 +15,43 @@ function toTimestamp(dateString) {
   }
 }
 
+function parseNumeric(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function calculateInvestedValue(portfolio) {
+  if (!portfolio) return 0;
+  const explicit = parseNumeric(portfolio.investedValue);
+  if (explicit !== null) return explicit;
+
+  return (
+    portfolio.stocks?.reduce(
+      (acc, stock) => acc + (parseNumeric(stock.price) ?? 0),
+      0
+    ) || 0
+  );
+}
+
+function calculateCurrentValue(portfolio, investedValue) {
+  if (!portfolio) return 0;
+  const explicit = parseNumeric(portfolio.currentValue);
+  if (explicit !== null) return explicit;
+  if (typeof investedValue === "number") return investedValue;
+  return calculateInvestedValue(portfolio);
+}
+
+function calculateChangePct(portfolio) {
+  if (!portfolio) return null;
+  const explicit = parseNumeric(portfolio.changePct);
+  if (explicit !== null) return explicit;
+
+  const invested = calculateInvestedValue(portfolio);
+  if (!invested) return null;
+  const current = calculateCurrentValue(portfolio, invested);
+  return ((current - invested) / invested) * 100;
+}
+
 export function MyPortfolios() {
   const [portfolios, setPortfolios] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -80,6 +117,26 @@ export function MyPortfolios() {
             ? a.name.localeCompare(b.name)
             : b.name.localeCompare(a.name)
         );
+        break;
+
+      case "percentage":
+        sorted.sort((a, b) => {
+          const pctA = calculateChangePct(a);
+          const pctB = calculateChangePct(b);
+          const normalizedA =
+            pctA === null
+              ? asc
+                ? Number.POSITIVE_INFINITY
+                : Number.NEGATIVE_INFINITY
+              : pctA;
+          const normalizedB =
+            pctB === null
+              ? asc
+                ? Number.POSITIVE_INFINITY
+                : Number.NEGATIVE_INFINITY
+              : pctB;
+          return asc ? normalizedA - normalizedB : normalizedB - normalizedA;
+        });
         break;
 
       case "date":
@@ -235,6 +292,9 @@ export function MyPortfolios() {
   if (loading) return <p className="loading-text">Loading portfolios...</p>;
   if (error) return <p className="error-text">Error: {error}</p>;
 
+  const isPercentageRanking = sortOption === "percentage";
+  const rankingDirectionText = ascending ? "lowest -> highest" : "highest -> lowest";
+
   return (
     <div className="my-portfolios-page">
       {/* Header with Title + Sort Options */}
@@ -250,38 +310,39 @@ export function MyPortfolios() {
             <option value="date">Sort by Date</option>
             <option value="value">Sort by Portfolio Value</option>
             <option value="alphabet">Sort by Alphabet</option>
+            <option value="percentage">Rank by % Change</option>
           </select>
 
-          <button className="order-toggle" onClick={toggleOrder}>
-            {ascending ? "🔼" : "🔽"}
+          <button
+            className="order-toggle"
+            onClick={toggleOrder}
+            aria-label={`Toggle sort order (currently ${ascending ? "ascending" : "descending"})`}
+            title={`Sort ${ascending ? "ascending" : "descending"}`}
+          >
+            <span aria-hidden="true">{ascending ? "↑" : "↓"}</span>
           </button>
         </div>
       </div>
+      {isPercentageRanking && (
+        <p className="ranking-note">
+          <span className="note-accent" aria-hidden="true"></span>
+          <strong>Ranking portfolios by % change.</strong> Displaying {rankingDirectionText}.
+        </p>
+      )}
 
       {/* Portfolios Grid */}
       {filtered.length === 0 ? (
         <p className="no-portfolios">No portfolios yet. Create one!</p>
       ) : (
         <div className="portfolios-grid">
-          {filtered.map((p) => {
-            const totalValue = p.stocks
-              ? p.stocks.reduce((acc, s) => acc + (s.price || 0), 0).toFixed(2)
-              : "0.00";
-
+          {filtered.map((p, index) => {
             const shouldScroll = p.stocks && p.stocks.length > 4;
-
-            const investedValue =
-              Number(
-                p.investedValue ??
-                (p.stocks ? p.stocks.reduce((acc, s) => acc + (s.price || 0), 0) : 0)
-              );
-            const currentValue = Number(
-              p.currentValue ?? investedValue
-            );
-            const changePct =
-              typeof p.changePct === "number" ? p.changePct : null;
+            const investedValue = calculateInvestedValue(p);
+            const currentValue = calculateCurrentValue(p, investedValue);
+            const changePct = calculateChangePct(p);
+            const hasChangePct = changePct !== null && Number.isFinite(changePct);
             const changeClass =
-              changePct === null
+              !hasChangePct
                 ? "change-neutral"
                 : changePct > 0
                   ? "change-positive"
@@ -302,7 +363,17 @@ export function MyPortfolios() {
                 }}
               >
                 <div className="portfolio-header">
-                  <h2>{p.name}</h2>
+                  <div className="portfolio-title">
+                    {isPercentageRanking && (
+                      <span
+                        className="portfolio-rank-chip"
+                        title="Ranked by percentage change"
+                      >
+                        #{String(index + 1).padStart(2, "0")}
+                      </span>
+                    )}
+                    <h2>{p.name}</h2>
+                  </div>
                   <div className="card-actions">
                     <button
                       className="delete-btn card-action-btn"
@@ -327,7 +398,7 @@ export function MyPortfolios() {
                   <p>
                     <strong>Current Value:</strong> ${currentValue.toFixed(2)}
                   </p>
-                  {changePct !== null && (
+                  {hasChangePct && (
                     <p className={`change-indicator ${changeClass}`}>
                       {changePct > 0 ? "+" : ""}
                       {changePct.toFixed(2)}%

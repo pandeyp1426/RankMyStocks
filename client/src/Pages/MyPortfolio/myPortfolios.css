@@ -25,6 +25,34 @@
   color: #ffffff;
 }
 
+.ranking-note {
+  width: 100%;
+  max-width: 1400px;
+  margin-bottom: 1.5rem;
+  background: rgba(10, 6, 37, 0.45);
+  border: 1px solid rgba(0, 249, 255, 0.35);
+  border-radius: 16px;
+  padding: 0.65rem 1rem;
+  color: #f6f7ff;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+}
+
+.ranking-note .note-accent {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00f9ff;
+  box-shadow: 0 0 10px rgba(0, 249, 255, 0.9);
+}
+
+.ranking-note strong {
+  color: #00f9ff;
+}
+
 /* --- Sort Controls --- */
 .sort-controls {
   display: flex;
@@ -53,21 +81,30 @@
   box-shadow: 0 0 4px rgba(113, 99, 241, 0.4);
 }
 
-/* Arrow Toggle Button */
 .order-toggle {
-  background: #fff;
-  border: 2px solid #8a77f8;
-  border-radius: 10px;
-  padding: 0.35rem 0.75rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  line-height: 1;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 
 .order-toggle:hover {
-  background: #8a77f8;
-  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+}
+
+.order-toggle:focus-visible {
+  outline: 2px solid #00f9ff;
+  outline-offset: 2px;
 }
 
 /* --- Grid Layout (4 Columns) --- */
@@ -115,14 +152,14 @@
 }
 
 /* --- Header inside Card --- */
-.portfolio-header {
+.my-portfolios-page .portfolio-header {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 0.8rem;
 }
-.portfolio-header h2 {
+.my-portfolios-page .portfolio-header h2 {
   flex: 1;
   font-size: 1.25rem;
   font-weight: 700;
@@ -131,7 +168,25 @@
   cursor: default;
   letter-spacing: 0.4px;
 }
-.portfolio-header h2:hover {
+.my-portfolios-page .portfolio-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+.my-portfolios-page .portfolio-rank-chip {
+  background: rgba(0, 249, 255, 0.12);
+  border: 1px solid rgba(0, 249, 255, 0.65);
+  color: #00f9ff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+}
+.my-portfolios-page .portfolio-header h2:hover {
   color: #9ddcff;
 }
 .rename-input {

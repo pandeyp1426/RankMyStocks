@@ -22,6 +22,7 @@ export function Questionair() {
 
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
+  const DEFAULT_USER_ID = Number(import.meta.env.VITE_DEFAULT_USER_ID || 1);
   
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
@@ -262,12 +263,18 @@ const sendStockPick = async (stock) => {
   // Save portfolio to backend
   const savePortfolio = (chosenStock) => {
     const name = portfolioName || "Untitled Portfolio";
+    const description =
+      selectedStocks.length > 0
+        ? `Auto-created from ${selectedStocks.length} questionnaire picks`
+        : "Auto-created from questionnaire";
 
     fetch(`${API_URL}/api/portfolios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
+        description,
+        userId: DEFAULT_USER_ID,
         stocks: [
           {
             ...chosenStock,

@@ -18,6 +18,7 @@ import stocks
 load_dotenv()
 
 OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"
+DEFAULT_USER_ID = int(os.getenv("DEFAULT_USER_ID", 1))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 
@@ -56,6 +57,47 @@ def get_db_connection():
         database=os.getenv("DB_NAME"),
         port=int(os.getenv("DB_PORT", 3306))
     )
+
+def safe_float(val, default=None):
+    try:
+        if val in (None, "", "None"):
+            return default
+        return float(val)
+    except (TypeError, ValueError):
+        return default
+
+def safe_quantity(val):
+    qty = safe_float(val, None)
+    if qty is None or qty <= 0:
+        return 1.0
+    return qty
+
+def compute_portfolio_snapshot_values(cursor, portfolio_id):
+    cursor.execute(
+        "SELECT ticker, price FROM portfolio_stocks WHERE portfolio_id = %s",
+        (portfolio_id,)
+    )
+    rows = cursor.fetchall()
+    invested = 0.0
+    tickers = []
+    normalized = []
+    for ticker, price in rows:
+        normalized_ticker = (ticker or "").strip().upper()
+        price_value = safe_float(price, 0.0) or 0.0
+        invested += price_value
+        if normalized_ticker:
+            tickers.append(normalized_ticker)
+        normalized.append((normalized_ticker, price_value))
+
+    quote_cache = get_bulk_quotes(list(set(tickers))) if tickers else {}
+    current = 0.0
+    for ticker, stored in normalized:
+        quote = quote_cache.get(ticker) or {}
+        latest = safe_float(quote.get("price"))
+        current += latest if latest is not None else stored
+
+    change_pct = ((current - invested) / invested * 100) if invested > 0 else None
+    return invested, current, change_pct
 
 #  Routes
 @app.route("/")
@@ -277,42 +319,95 @@ def db_test():
 # ---- Create Portfolio ----
 @app.route("/api/portfolios", methods=["POST"])
 def create_portfolio():
-    data = request.get_json()
-    name = data.get("name")
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
     stocks = data.get("stocks", [])   # [{ticker: 'AAPL', price: 123}, ...]
+    description = (data.get("description") or "").strip()
+    requested_user_id = data.get("userId") or data.get("user_id") or DEFAULT_USER_ID
 
     if not name or not stocks:
         return jsonify({"error": "Missing name or stocks"}), 400
 
     try:
+        user_id = int(requested_user_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid user id"}), 400
+
+    conn = None
+    cursor = None
+    try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Reuse existing portfolio if name already exists
-        cursor.execute("SELECT id FROM portfolios WHERE name = %s", (name,))
+        # Reuse existing portfolio for same user/name pair
+        cursor.execute(
+            "SELECT id FROM portfolios WHERE name = %s AND user_id = %s",
+            (name, user_id)
+        )
         existing = cursor.fetchone()
 
         if existing:
             portfolio_id = existing[0]
+            if description:
+                cursor.execute(
+                    "UPDATE portfolios SET description = %s WHERE id = %s",
+                    (description, portfolio_id)
+                )
         else:
-            cursor.execute("INSERT INTO portfolios (name) VALUES (%s)", (name,))
+            cursor.execute(
+                "INSERT INTO portfolios (name, description, user_id) VALUES (%s, %s, %s)",
+                (name, description or None, user_id)
+            )
             portfolio_id = cursor.lastrowid
 
-        # Insert stocks (default price = 0 if missing)
+        inserted_any = False
         for s in stocks:
-            price_value = s.get("price") or 0.0
+            ticker = (s.get("ticker") or "").strip().upper()
+            if not ticker:
+                continue
+            price_value = safe_float(s.get("price"), 0.0) or 0.0
             cursor.execute(
                 "INSERT INTO portfolio_stocks (portfolio_id, ticker, price) VALUES (%s, %s, %s)",
-                (portfolio_id, s.get("ticker"), price_value)
+                (portfolio_id, ticker, price_value)
             )
+            transaction_type = (s.get("transactionType") or s.get("transaction_type") or "BUY").strip().upper()
+            if transaction_type not in ("BUY", "SELL"):
+                transaction_type = "BUY"
+            quantity_value = safe_quantity(s.get("quantity"))
+            cursor.execute(
+                """
+                INSERT INTO portfolio_transactions
+                (portfolio_id, ticker, transaction_type, quantity, price_per_share)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (portfolio_id, ticker, transaction_type, quantity_value, price_value)
+            )
+            inserted_any = True
+
+        if not inserted_any:
+            conn.rollback()
+            return jsonify({"error": "No valid stocks to insert"}), 400
+
+        invested_value, current_value, change_pct = compute_portfolio_snapshot_values(cursor, portfolio_id)
+        cursor.execute(
+            """
+            INSERT INTO portfolio_snapshots
+            (portfolio_id, snapshot_date, invested_value, current_value, change_pct)
+            VALUES (%s, NOW(), %s, %s, %s)
+            """,
+            (portfolio_id, invested_value, current_value, change_pct)
+        )
 
         conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"status": "success", "portfolio_id": portfolio_id})
+        return jsonify({"status": "success", "portfolio_id": portfolio_id, "userId": user_id})
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 @app.route("/api/portfolios/<int:portfolio_id>", methods=["PUT"])
@@ -398,6 +493,8 @@ def _load_portfolios_from_db():
             SELECT 
                 p.id, 
                 p.name, 
+                p.description,
+                p.user_id,
                 p.created_at,
                 ps.ticker, 
                 ps.price
@@ -414,6 +511,8 @@ def _load_portfolios_from_db():
                 portfolios[pid] = {
                     "id": pid,
                     "name": r["name"],
+                    "description": r.get("description"),
+                    "user_id": r.get("user_id"),
                     "created_at": (
                         r["created_at"].isoformat() if r["created_at"] else None
                     ),
@@ -463,14 +562,6 @@ def list_portfolios():
 
 
 def attach_portfolio_performance(portfolios):
-    def safe_float(val):
-        try:
-            if val in (None, "", "None"):
-                return None
-            return float(val)
-        except (TypeError, ValueError):
-            return None
-
     tickers = {
         (stock.get("ticker") or "").strip().upper()
         for p in portfolios
