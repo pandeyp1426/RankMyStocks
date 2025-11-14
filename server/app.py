@@ -1,5 +1,5 @@
 from flask import Flask, session, jsonify, request
-from components.getFrontend import get_frontend
+#from components.handleUser import handleUser
 import mysql.connector
 import urllib.request
 import os
@@ -18,6 +18,7 @@ load_dotenv()
 
 OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"
 app = Flask(__name__)
+#app.register_blueprint(handleUser)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 
 #required for cross origin session cookies
@@ -232,7 +233,7 @@ def pick_stock():
     
     #this function recives the users picked stock from the frontend and stores it in the portfolio list
     data = request.get_json()
-    stock_pick = data.get("stockPick")
+    stock_pick = data.get("stockPick")  
     
     portoflio = session.get("portfolio", "No portfolio avalible")
     portoflio.append(stock_pick)
@@ -485,17 +486,22 @@ def delete_portfolio(portfolio_id):
         cursor.close()
         conn.close()
 
+#User handling
 @app.route("/api/user_ID", methods=["POST"])
 def get_user_ID():
     data = request.get_json()
     user_ID = data.get("user_ID")
-
-    response = jsonify({
-        "status": "initialized", 
+    role = "user"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO user (user_ID, user_role) VALUES (%s, %s)", (user_ID, role))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({
+        "status": "initialized",
         "user_ID": user_ID
     })
-    
-    return response
 
 # ---- Entrypoint ----
 if __name__ == "__main__":

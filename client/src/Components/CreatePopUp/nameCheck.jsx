@@ -9,8 +9,8 @@ export function NameCheck() {
   const [showError, setShowError] = useState(false);
 
   const handleCheck = () => {
-    if (portfolioName === "") {
-      setShowError(true);
+      if (portfolioName === "") {
+        setShowError(true);
     } else {
       setShowError(false);
       navigate("/questionair");
