@@ -228,7 +228,7 @@ body {
 .home .portfolio-chart {
   background: linear-gradient(180deg, #e8f9f8, #f1f8fe);
   border-radius: 16px;
-  min-height: 600px; /* approx target */
+  height: 600px; /* approx target */
   margin-top: 2.5rem;
   display: flex;
   align-items: center;
