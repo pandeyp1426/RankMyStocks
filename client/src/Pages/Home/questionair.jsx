@@ -1,6 +1,7 @@
 import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAuth0 } from "@auth0/auth0-react";
 import axios from "axios";
 import "./Questionair.css";
 
@@ -11,6 +12,8 @@ export function Questionair() {
   //Fetching values from store and assigning them for use
   const portfolioName = useSelector((state) => state.portfolio.portfolioName);
   const questionQTY = useSelector((state) => state.questionQTY.value);
+  const activeUserId = useSelector((state) => state.auth.userID);
+  const { isAuthenticated, user, loginWithRedirect } = useAuth0();
   
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
@@ -22,7 +25,74 @@ export function Questionair() {
 
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
+
+  // Resolve the current user id from Redux or Auth0
+  const resolvedUserId = activeUserId || user?.sub || null;
+
+  // Require a user id before allowing portfolio saves; trigger login if needed.
+  function requireUserId() {
+    if (resolvedUserId) return resolvedUserId;
+    setError("Please log in before saving portfolios.");
+    if (!isAuthenticated && loginWithRedirect) {
+      loginWithRedirect();
+    }
+    return null;
+  }
   
+  // fetch two unique random stocks
+  const fetchTwoStocks = async () => {
+    try {
+      let data1, data2;
+
+      do {
+        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
+      } while (!data1 || !data1.ticker || data1.ticker === "Symbol");
+
+
+      do {
+        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
+      } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
+
+      
+      console.log("Fetched stock1:", data1);
+      console.log("Fetched stock2:", data2);
+      
+      setStock1(data1);
+      setStock2(data2);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  };
+
+  async function fetchStockInfo(ticker) {
+    try {
+      const res = await fetch(`${API_URL}/api/stock-info?ticker=${encodeURIComponent(ticker)}`);
+      if (!res.ok) {
+        throw new Error(`Stock info lookup failed (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error("Failed to fetch stock info:", err);
+      return null;
+    }
+  }
+
+useEffect(() => {
+  async function loadInfo() {
+    if (stock1 && stock1.ticker && !stock1.info) {
+      const info = await fetchStockInfo(stock1.ticker);
+      if (info) setStock1(prev => ({ ...prev, info }));
+    }
+    if (stock2 && stock2.ticker && !stock2.info) {
+      const info = await fetchStockInfo(stock2.ticker);
+      if (info) setStock2(prev => ({ ...prev, info }));
+    }
+  }
+
+  loadInfo();
+}, [stock1?.ticker, stock2?.ticker]);
+
+
   //function to send questionQTY and portfolio name to backend
   const sendQuestionQTY = async () => {
     try {
@@ -80,8 +150,10 @@ const fetchStockData = async () => {
         ticker: data.ticker1,
         name: data.name1,
         price: data.price1,
-        description: data.response1
-      })
+        description: data.response1,
+        change: data.change1,
+        changePercent: data.changePercent1
+      });
   }
 
     //set stock2 with data from flask session
@@ -90,7 +162,9 @@ const fetchStockData = async () => {
         ticker: data.ticker2,
         name: data.name2,
         price: data.price2,
-        description: data.response2
+        description: data.response2,
+        change: data.change2,
+        changePercent: data.changePercent2
       });
   }
 
@@ -137,6 +211,9 @@ const sendStockPick = async (stock) => {
 
   // when user picks a stock
   const handlePick = async (stock) => {
+    const userId = requireUserId();
+    if (!userId) return;
+
     // stop if already completed
     if (isComplete || selectedStocks.length >= Number(questionQTY || 0)) {
       setIsComplete(true);
@@ -187,29 +264,66 @@ const sendStockPick = async (stock) => {
     await fetchStockData();
   };
 
+  const formatChangeClass = (stock) => {
+    const change = Number(stock?.change ?? stock?.changePercent);
+    if (Number.isNaN(change)) return "neutral";
+    return change >= 0 ? "positive" : "negative";
+  };
+
+  const formatChange = (stock) => {
+    const change = Number(stock?.change);
+    const pct = Number(stock?.changePercent);
+    const parts = [];
+    if (!Number.isNaN(change)) {
+      const sign = change > 0 ? "+" : "";
+      parts.push(`${sign}${change.toFixed(2)}`);
+    }
+    if (!Number.isNaN(pct)) {
+      const signPct = pct > 0 ? "+" : "";
+      parts.push(`${signPct}${pct.toFixed(2)}%`);
+    }
+    return parts.length ? parts.join(" | ") : "—";
+  };
+
   // Save portfolio to backend
   const savePortfolio = (chosenStock) => {
+    const userId = requireUserId();
+    if (!userId) return;
+
     const name = portfolioName || "Untitled Portfolio";
+    const description =
+      selectedStocks.length > 0
+        ? `Auto-created from ${selectedStocks.length} questionnaire picks`
+        : "Auto-created from questionnaire";
 
     fetch(`${API_URL}/api/portfolios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
+        description,
+        userId,
         stocks: [
           {
             ...chosenStock,
             price: chosenStock.price || 0,
+            quantity: chosenStock.quantity || 1,
+            transactionType: "BUY",
           },
         ],
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || data?.error) {
+          throw new Error(data?.message || data?.error || `Failed to save portfolio (${res.status})`);
+        }
         console.log("Portfolio saved:", data);
-        //alert(`Saved ${chosenStock.ticker} to portfolio: ${name}`); removed alert for better UX
       })
-      .catch((err) => console.error("Error saving portfolio:", err));
+      .catch((err) => {
+        console.error("Error saving portfolio:", err);
+        setError(err.message || "Error saving portfolio");
+      });
   };
 
   return (
@@ -236,8 +350,8 @@ const sendStockPick = async (stock) => {
               <button className="info-icon" title={stock1.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock1.ticker}</h3>
               <p className="stock-name">{stock1.name}</p>
-              <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
-              <p className="stock-change positive">+2.34 (+1.35%)</p>
+              <p className="stock-price">${Number(stock1.price || 0).toFixed(2)}</p>
+              <p className={`stock-change ${formatChangeClass(stock1)}`}>{formatChange(stock1)}</p>
             </div>
           )}
 
@@ -253,8 +367,8 @@ const sendStockPick = async (stock) => {
               <button className="info-icon" title={stock2.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock2.ticker}</h3>
               <p className="stock-name">{stock2.name}</p>
-              <p className="stock-price">${Number(stock2.price).toFixed(2)}</p>
-              <p className="stock-change negative">-1.23 (-1.23%)</p>
+              <p className="stock-price">${Number(stock2.price || 0).toFixed(2)}</p>
+              <p className={`stock-change ${formatChangeClass(stock2)}`}>{formatChange(stock2)}</p>
             </div>
           )}
         </div>
@@ -262,9 +376,24 @@ const sendStockPick = async (stock) => {
 
         {isComplete ? (
           <div className="complete-box">
-            <h3>All rounds completed!</h3>
-            <p>Your selections have been saved to the portfolio.</p>
-            <Link to="/myPortfolios" className="hero-button" style={{textDecoration:'none'}}>View My Portfolios</Link>
+            <div className="complete-icon">✓</div>
+            <h3>All rounds completed</h3>
+            <p className="complete-subtitle">
+              Your picks are locked in and saved under <strong>{portfolioName || "Your Portfolio"}</strong>.
+            </p>
+            <div className="complete-summary">
+              <div>
+                <span>Rounds played</span>
+                <strong>{questionQTY}</strong>
+              </div>
+              <div>
+                <span>Stocks saved</span>
+                <strong>{selectedStocks.length}</strong>
+              </div>
+            </div>
+            <Link to="/myPortfolios" className="complete-btn" style={{textDecoration:'none'}}>
+              View My Portfolios
+            </Link>
           </div>
         ) : (
           <button className="reroll-button" onClick={handleReroll}>
