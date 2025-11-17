@@ -222,14 +222,13 @@ const sendStockPick = async (stock) => {
 
     const newSelected = [...selectedStocks, stock];
     setSelectedStocks(newSelected);
-    savePortfolio(stock); //save to backend
 
-    // If we've reached the configured number of rounds, mark complete and stop
+    // If we've reached the configured number of rounds, mark complete and save once
     if (newSelected.length >= Number(questionQTY || 0)) {
       setIsComplete(true);
-      // hide current choices to avoid extra clicks
       setStock1(null);
       setStock2(null);
+      await savePortfolio(newSelected);
       return;
     }
 
@@ -286,44 +285,43 @@ const sendStockPick = async (stock) => {
   };
 
   // Save portfolio to backend
-  const savePortfolio = (chosenStock) => {
+  const savePortfolio = async (stocksToSave = []) => {
     const userId = requireUserId();
     if (!userId) return;
+    if (!Array.isArray(stocksToSave) || stocksToSave.length === 0) {
+      setError("No stocks selected to save.");
+      return;
+    }
 
     const name = portfolioName || "Untitled Portfolio";
-    const description =
-      selectedStocks.length > 0
-        ? `Auto-created from ${selectedStocks.length} questionnaire picks`
-        : "Auto-created from questionnaire";
+    const description = `Auto-created from ${stocksToSave.length} questionnaire picks`;
+    const stocksPayload = stocksToSave.map((s) => ({
+      ticker: s.ticker,
+      price: s.price || 0,
+      quantity: s.quantity || 1,
+      transactionType: "BUY",
+    }));
 
-    fetch(`${API_URL}/api/portfolios`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        userId,
-        stocks: [
-          {
-            ...chosenStock,
-            price: chosenStock.price || 0,
-            quantity: chosenStock.quantity || 1,
-            transactionType: "BUY",
-          },
-        ],
-      }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok || data?.error) {
-          throw new Error(data?.message || data?.error || `Failed to save portfolio (${res.status})`);
-        }
-        console.log("Portfolio saved:", data);
-      })
-      .catch((err) => {
-        console.error("Error saving portfolio:", err);
-        setError(err.message || "Error saving portfolio");
+    try {
+      const res = await fetch(`${API_URL}/api/portfolios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          userId,
+          stocks: stocksPayload,
+        }),
       });
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        throw new Error(data?.message || data?.error || `Failed to save portfolio (${res.status})`);
+      }
+      console.log("Portfolio saved:", data);
+    } catch (err) {
+      console.error("Error saving portfolio:", err);
+      setError(err.message || "Error saving portfolio");
+    }
   };
 
   return (
