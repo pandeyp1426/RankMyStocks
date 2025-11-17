@@ -3,15 +3,37 @@
   top: 50%; /* center vertically */
   left: 50%; /* center horizontally */
   transform: translate(-50%, -50%);
-  z-index: 1000; /* ensures it's on top of logo and content */
+  z-index: 1200; /* ensure above navbar/questionnaire */
   background-color: #2e2460;
   border: 2px solid #00f9ff;
   border-radius: 32px;
   padding: 30px 40px;
   color: white;
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
   min-width: 70%;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   text-align: center;
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
+}
+.popup {
+  scrollbar-width: thin;
+  scrollbar-color: #00dfea rgba(255, 255, 255, 0.08);
+}
+.popup::-webkit-scrollbar {
+  width: 8px;
+}
+.popup::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.popup::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00f9ff, #00aee0);
+  border-radius: 12px;
+}
+.popup::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #4afcff, #00a0ff);
 }
 
 .popup h3 { /* Title styling */
@@ -54,7 +76,10 @@
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.7);
-  z-index: 999;
+  z-index: 1100;
+}
+.popup-overlay--clear {
+  background: transparent;
 }
 .popup-inner .close-btn {
   position: absolute;

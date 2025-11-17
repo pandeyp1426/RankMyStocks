@@ -12,10 +12,11 @@
   "dependencies": {
     "@auth0/auth0-react": "^2.8.0",
     "@reduxjs/toolkit": "^2.9.0",
-    "apexcharts": "^3.48.0",
+    "apexcharts": "^5.3.6",
+    "auth0": "^5.1.0",
     "axios": "^1.12.2",
-    "react-apexcharts": "^1.4.0",
     "react": "^19.1.1",
+    "react-apexcharts": "^1.8.0",
     "react-dom": "^19.1.1",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.2"
