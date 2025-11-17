@@ -1,13 +1,16 @@
 from flask import Flask, session, jsonify, request
+import requests
 import mysql.connector
 import urllib.request
 import os
 import random
 import time
 import csv
+from datetime import datetime, timedelta, timezone
 from flask_cors import CORS
 from dotenv import load_dotenv
 import urllib.parse
+import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
@@ -30,7 +33,18 @@ CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 
 from stocks import random_stock, get_stock_price, get_company_name
 from stocks import get_description
-from stocks import search_stocks, get_description
+from stocks import search_stocks
+from stocks import (
+    get_global_quote,
+    get_avg_volume_60d,
+    get_market_cap,
+    get_price_earnings_ratio,
+    get_dividend_yield,
+    get_52_week_high,
+    get_52_week_low,
+    get_bulk_quotes,
+    get_stock_snapshot,
+)
 
 
 #  Reusable DB Connection
@@ -43,6 +57,90 @@ def get_db_connection():
         database=os.getenv("DB_NAME"),
         port=int(os.getenv("DB_PORT", 3306))
     )
+
+def safe_float(val, default=None):
+    try:
+        if val in (None, "", "None"):
+            return default
+        return float(val)
+    except (TypeError, ValueError):
+        return default
+
+def safe_quantity(val):
+    qty = safe_float(val, None)
+    if qty is None or qty <= 0:
+        return 1.0
+    return qty
+def normalize_user_identifier(identifier):
+    if identifier is None:
+        return None
+    if isinstance(identifier, (int, float)):
+        identifier = str(int(identifier))
+        return identifier
+
+    identifier = str(identifier).strip()
+    if not identifier:
+        return None
+
+    if identifier.isdigit():
+        return identifier
+
+    # Map non-numeric identifiers (e.g., Auth0 subs) to a stable numeric string
+    digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
+    # Keep within signed 32-bit int range to avoid DB overflow on INT columns
+    numeric_id = int(digest, 16) % 2_000_000_000
+    return str(numeric_id)
+
+def ensure_user_exists(user_id, role="user"):
+    if user_id is None:
+        return
+    user_id = str(user_id)
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_ID FROM user WHERE user_ID = %s", (user_id,))
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "INSERT INTO user (user_ID, user_role) VALUES (%s, %s)",
+                (user_id, role)
+            )
+            conn.commit()
+    except Exception as exc:
+        print(f"Warning: unable to ensure user {user_id} exists:", exc)
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def compute_portfolio_snapshot_values(cursor, portfolio_id):
+    cursor.execute(
+        "SELECT ticker, price FROM portfolio_stocks WHERE portfolio_id = %s",
+        (portfolio_id,)
+    )
+    rows = cursor.fetchall()
+    invested = 0.0
+    tickers = []
+    normalized = []
+    for ticker, price in rows:
+        normalized_ticker = (ticker or "").strip().upper()
+        price_value = safe_float(price, 0.0) or 0.0
+        invested += price_value
+        if normalized_ticker:
+            tickers.append(normalized_ticker)
+        normalized.append((normalized_ticker, price_value))
+
+    quote_cache = get_bulk_quotes(list(set(tickers))) if tickers else {}
+    current = 0.0
+    for ticker, stored in normalized:
+        quote = quote_cache.get(ticker) or {}
+        latest = safe_float(quote.get("price"))
+        current += latest if latest is not None else stored
+
+    change_pct = ((current - invested) / invested * 100) if invested > 0 else None
+    return invested, current, change_pct
 
 #  Routes
 @app.route("/")
@@ -87,11 +185,13 @@ def get_stock_data():
 
         price1 = get_stock_price(ticker1)
         name1 = get_company_name(ticker1)
+        quote1 = get_global_quote(ticker1) or {}
         
 
         ticker2 = session.get("stock2", "No stock2 in session")
         price2 = get_stock_price(ticker2)
         name2 = get_company_name(ticker2)
+        quote2 = get_global_quote(ticker2) or {}
         
         
         stock1 = ticker1
@@ -117,12 +217,16 @@ def get_stock_data():
             "ticker1": ticker1,
             "name1": name1,
             "price1": float(price1) if price1 else None,
+            "change1": quote1.get("change"),
+            "changePercent1": quote1.get("changePercent"),
             
             "response1": response1.content,
             
             "ticker2": ticker2,
             "name2": name2,
             "price2": float(price2) if price2 else None,
+            "change2": quote2.get("change"),
+            "changePercent2": quote2.get("changePercent"),
             
             "response2": response2.content,
         })
@@ -216,10 +320,9 @@ def reroll():
         stock_list.append(stocks.random_stock())
         session["stock_list"] = stock_list
     else:
-        return jsonify({"error"}), 500
-    
-    
-    return stock_list
+        return jsonify({"error": "Invalid reroll request"}), 500
+
+    return jsonify({"status": "ok", "stock_list": stock_list})
 
 
 # ---- Pick Stock ----
@@ -259,68 +362,183 @@ def db_test():
 # ---- Create Portfolio ----
 @app.route("/api/portfolios", methods=["POST"])
 def create_portfolio():
-    data = request.get_json()
-    name = data.get("name")
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
     stocks = data.get("stocks", [])   # [{ticker: 'AAPL', price: 123}, ...]
+    description = (data.get("description") or "").strip()
+    requested_user_id = data.get("userId") or data.get("user_id")
 
     if not name or not stocks:
         return jsonify({"error": "Missing name or stocks"}), 400
 
+    user_id = normalize_user_identifier(requested_user_id)
+    if user_id is None:
+        return jsonify({"error": "Invalid user id"}), 400
+
+    ensure_user_exists(user_id)
+
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Reuse existing portfolio if name already exists
-        cursor.execute("SELECT id FROM portfolios WHERE name = %s", (name,))
-        existing = cursor.fetchone()
+        cursor.execute(
+            "INSERT INTO portfolios (name, description, user_id) VALUES (%s, %s, %s)",
+            (name, description or None, user_id)
+        )
+        portfolio_id = cursor.lastrowid
 
-        if existing:
-            portfolio_id = existing[0]
-        else:
-            cursor.execute("INSERT INTO portfolios (name) VALUES (%s)", (name,))
-            portfolio_id = cursor.lastrowid
-
-        # Insert stocks (default price = 0 if missing)
+        inserted_any = False
         for s in stocks:
-            price_value = s.get("price") or 0.0
+            ticker = (s.get("ticker") or "").strip().upper()
+            if not ticker:
+                continue
+            price_value = safe_float(s.get("price"), 0.0) or 0.0
             cursor.execute(
                 "INSERT INTO portfolio_stocks (portfolio_id, ticker, price) VALUES (%s, %s, %s)",
-                (portfolio_id, s.get("ticker"), price_value)
+                (portfolio_id, ticker, price_value)
             )
+            transaction_type = (s.get("transactionType") or s.get("transaction_type") or "BUY").strip().upper()
+            if transaction_type not in ("BUY", "SELL"):
+                transaction_type = "BUY"
+            quantity_value = safe_quantity(s.get("quantity"))
+            cursor.execute(
+                """
+                INSERT INTO portfolio_transactions
+                (portfolio_id, ticker, transaction_type, quantity, price_per_share)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (portfolio_id, ticker, transaction_type, quantity_value, price_value)
+            )
+            inserted_any = True
+
+        if not inserted_any:
+            conn.rollback()
+            return jsonify({"error": "No valid stocks to insert"}), 400
+
+        invested_value, current_value, change_pct = compute_portfolio_snapshot_values(cursor, portfolio_id)
+        cursor.execute(
+            """
+            INSERT INTO portfolio_snapshots
+            (portfolio_id, snapshot_date, invested_value, current_value, change_pct)
+            VALUES (%s, NOW(), %s, %s, %s)
+            """,
+            (portfolio_id, invested_value, current_value, change_pct)
+        )
 
         conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"status": "success", "portfolio_id": portfolio_id})
+        return jsonify({"status": "success", "portfolio_id": portfolio_id, "userId": user_id})
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@app.route("/api/portfolios/<int:portfolio_id>", methods=["PUT"])
+def rename_portfolio(portfolio_id):
+    data = request.get_json(silent=True) or {}
+    new_name = (data.get("name") or "").strip()
+    if not new_name:
+        return jsonify({"error": "Missing or invalid name"}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE portfolios SET name = %s WHERE id = %s",
+            (new_name, portfolio_id)
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({"error": "Portfolio not found"}), 404
+        return jsonify({"status": "success", "id": portfolio_id, "name": new_name})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route("/api/stock-stats", methods=["GET"])
+def api_stock_stats():
+    try:
+        ticker = request.args.get("ticker", "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "Missing ticker"}), 400
+
+        name = get_company_name(ticker)
+        quote = get_global_quote(ticker) or {}
+
+        def to_float(x):
+            try:
+                return float(x) if x not in (None, "", "None") else None
+            except Exception:
+                return None
+
+        def to_int(x):
+            try:
+                return int(float(x)) if x not in (None, "", "None") else None
+            except Exception:
+                return None
+
+        payload = {
+            "ticker": ticker,
+            "name": name,
+            "marketCap": to_float(get_market_cap(ticker)),
+            "peRatio": to_float(get_price_earnings_ratio(ticker)),
+            "dividendYield": to_float(get_dividend_yield(ticker)),
+            "week52High": to_float(get_52_week_high(ticker)),
+            "week52Low": to_float(get_52_week_low(ticker)),
+            "open": quote.get("open"),
+            "high": quote.get("high"),
+            "low": quote.get("low"),
+            "price": quote.get("price"),
+            "volume": to_int(quote.get("volume")),
+            "avgVolume": to_float(get_avg_volume_60d(ticker)),
+        }
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ---- List Portfolios ----
-@app.route("/api/portfolios", methods=["GET"])
-def list_portfolios():
+def _load_portfolios_from_db(user_id=None):
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         # Include created_at and sort newest first (LIFO)
-        cursor.execute("""
+        base_query = """
             SELECT 
                 p.id, 
                 p.name, 
+                p.description,
+                p.user_id,
                 p.created_at,
                 ps.ticker, 
                 ps.price
             FROM portfolios p
             LEFT JOIN portfolio_stocks ps ON p.id = ps.portfolio_id
-            ORDER BY p.created_at DESC
-        """)
-        rows = cursor.fetchall()
-        cursor.close()
-        conn.close()
+        """
+        params = []
+        if user_id is not None:
+            base_query += " WHERE p.user_id = %s"
+            params.append(user_id)
+        base_query += " ORDER BY p.created_at DESC"
 
-        # Group rows into portfolio objects
+        cursor.execute(base_query, params)
+        rows = cursor.fetchall()
+
         portfolios = {}
         for r in rows:
             pid = r["id"]
@@ -328,6 +546,8 @@ def list_portfolios():
                 portfolios[pid] = {
                     "id": pid,
                     "name": r["name"],
+                    "description": r.get("description"),
+                    "user_id": r.get("user_id"),
                     "created_at": (
                         r["created_at"].isoformat() if r["created_at"] else None
                     ),
@@ -347,15 +567,87 @@ def list_portfolios():
                     "price": price_value
                 })
 
-        # Convert to list sorted by created_at DESC (newest first)
+        for payload in portfolios.values():
+            payload["stockCount"] = len(payload.get("stocks", []))
+
+        return portfolios
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@app.route("/api/portfolios", methods=["GET"])
+def list_portfolios():
+    user_filter = request.args.get("userId")
+    user_id = None
+    if user_filter not in (None, "", "None"):
+        user_id = normalize_user_identifier(user_filter)
+        if user_id is None:
+            return jsonify({"status": "error", "message": "Invalid userId"}), 400
+
+    try:
+        portfolios_map = _load_portfolios_from_db(user_id=user_id)
         sorted_portfolios = sorted(
-            portfolios.values(),
+            portfolios_map.values(),
             key=lambda x: x["created_at"] or "",
             reverse=True
         )
 
+        attach_portfolio_performance(sorted_portfolios)
+
         return jsonify(sorted_portfolios)
 
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def attach_portfolio_performance(portfolios):
+    tickers = {
+        (stock.get("ticker") or "").strip().upper()
+        for p in portfolios
+        for stock in p.get("stocks", [])
+        if (stock.get("ticker") or "").strip()
+    }
+
+    quote_cache = get_bulk_quotes(list(tickers)) if tickers else {}
+
+    for portfolio in portfolios:
+        invested = 0.0
+        current = 0.0
+        for stock in portfolio.get("stocks", []):
+            stored = safe_float(stock.get("price")) or 0.0
+            invested += stored
+            ticker = (stock.get("ticker") or "").strip().upper()
+            quote = quote_cache.get(ticker) or {}
+            latest = safe_float(quote.get("price"))
+            current += latest if latest is not None else stored
+
+        portfolio["investedValue"] = round(invested, 2)
+        portfolio["currentValue"] = round(current, 2)
+        if invested > 0:
+            change_pct = ((current - invested) / invested) * 100
+            portfolio["changePct"] = round(change_pct, 2)
+        else:
+            portfolio["changePct"] = None
+
+
+@app.route("/api/portfolio-leaderboard", methods=["GET"])
+def portfolio_leaderboard():
+    user_filter = request.args.get("userId")
+    user_id = None
+    if user_filter not in (None, "", "None"):
+        user_id = normalize_user_identifier(user_filter)
+        if user_id is None:
+            return jsonify({"status": "error", "message": "Invalid userId"}), 400
+
+    try:
+        portfolios_map = _load_portfolios_from_db(user_id=user_id)
+        items = list(portfolios_map.values())
+        attach_portfolio_performance(items)
+        ranked = sorted(items, key=lambda p: p.get("currentValue") or 0.0, reverse=True)
+        return jsonify(ranked)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
     
@@ -365,14 +657,26 @@ def portfolio_performance():
     try:
         # range: 1D, 1W, 1M, 1Y, ALL
         rng = request.args.get("range", "1D").upper()
+        user_filter = request.args.get("userId")
+        user_id = None
+        if user_filter not in (None, "", "None"):
+            user_id = normalize_user_identifier(user_filter)
+            if user_id is None:
+                return jsonify({"status": "error", "message": "Invalid userId"}), 400
 
         # Compute current total value from DB (sum of all stocks' stored price)
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
+        base_query = """
             SELECT COALESCE(SUM(CASE WHEN ps.price IS NULL OR ps.price = '' OR ps.price = 'None' THEN 0 ELSE ps.price END), 0) AS total
             FROM portfolio_stocks ps
-        """)
+            INNER JOIN portfolios p ON p.id = ps.portfolio_id
+        """
+        params = []
+        if user_id is not None:
+            base_query += " WHERE p.user_id = %s"
+            params.append(user_id)
+        cursor.execute(base_query, params)
         row = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -454,10 +758,289 @@ def stock_description():
         return jsonify({
             "ticker": ticker,
             "name": name,
-            "description": desc
+            "description": desc,
+            "price": float(get_stock_price(ticker)) if get_stock_price(ticker) else None,
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/stock-info", methods=["GET"])
+def stock_info():
+    try:
+        ticker = request.args.get("ticker", "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "Missing ticker"}), 400
+        snapshot = get_stock_snapshot(ticker)
+        if not snapshot.get("price") and not snapshot.get("name"):
+            return jsonify({"error": "Ticker not found"}), 404
+        if not snapshot.get("description"):
+            snapshot["description"] = get_description(ticker)
+        return jsonify(snapshot)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ---- Daily Digest (news + LLM summary) ----
+@app.route("/api/daily-digest", methods=["GET"])
+def daily_digest():
+    try:
+        ticker = request.args.get("ticker", "").strip().upper()
+        if not ticker:
+            return jsonify({"error": "Missing ticker"}), 400
+
+        now_utc = datetime.now(timezone.utc)
+        cutoff = now_utc - timedelta(hours=24)
+
+        def safe_float(value):
+            try:
+                if value in (None, "", "None"):
+                    return None
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        def parse_timestamp(ts):
+            if not ts:
+                return None
+            ts = ts.strip()
+            try:
+                return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+            clean_ts = ts.replace("Z", "")
+            for fmt, length in (("%Y%m%dT%H%M%S", 15), ("%Y%m%dT%H%M", 13)):
+                try:
+                    dt = datetime.strptime(clean_ts[:length], fmt)
+                    return dt.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+            return None
+
+        def fmt_currency(value, decimals=2):
+            if value is None:
+                return "n/a"
+            return f"${value:,.{decimals}f}"
+
+        def fmt_signed_currency(value):
+            if value is None:
+                return "n/a"
+            sign = "+" if value >= 0 else "-"
+            return f"{sign}${abs(value):,.2f}"
+
+        def fmt_float(value, decimals=2):
+            if value is None:
+                return "n/a"
+            return f"{value:,.{decimals}f}"
+
+        def fmt_market_cap(value):
+            if value is None:
+                return "n/a"
+            trillion = 1_000_000_000_000
+            billion = 1_000_000_000
+            million = 1_000_000
+            magnitude = abs(value)
+            if magnitude >= trillion:
+                return f"${value / trillion:.2f}T"
+            if magnitude >= billion:
+                return f"${value / billion:.2f}B"
+            if magnitude >= million:
+                return f"${value / million:.2f}M"
+            return f"${value:,.0f}"
+
+        def fmt_percent(value):
+            if value is None:
+                return "n/a"
+            return f"{value * 100:.2f}%"
+
+        headlines_raw = []
+        seen_titles = set()
+
+        def normalize_source(source):
+            if isinstance(source, dict):
+                return source.get("name") or source.get("title")
+            return source
+
+        def add_headline(title, url_, source=None, summary=None, published_at=None, sentiment=None):
+            if not title:
+                return
+            normalized_title = title.strip()
+            if not normalized_title:
+                return
+            key = normalized_title.lower()
+            if key in seen_titles:
+                return
+            published_dt = parse_timestamp(published_at)
+            headlines_raw.append({
+                "title": normalized_title,
+                "url": url_,
+                "source": normalize_source(source),
+                "summary": summary.strip() if isinstance(summary, str) else summary,
+                "sentiment": sentiment,
+                "published_at": published_dt,
+            })
+            seen_titles.add(key)
+
+        marketaux_key = os.getenv("MARKETAUX_KEY")
+        if marketaux_key:
+            try:
+                url = (
+                    "https://api.marketaux.com/v1/news/all?"
+                    f"symbols={ticker}&filter_entities=true&language=en&limit=15&api_token={marketaux_key}"
+                )
+                r = requests.get(url, timeout=10)
+                j = r.json()
+                for item in j.get("data") or []:
+                    add_headline(
+                        title=item.get("title"),
+                        url_=item.get("url"),
+                        source=item.get("source"),
+                        summary=item.get("description") or item.get("snippet"),
+                        published_at=item.get("published_at"),
+                        sentiment=item.get("sentiment"),
+                    )
+            except Exception:
+                pass
+
+        alpha_key = (
+            os.getenv("ALPHAVANTAGE_KEY")
+            or os.getenv("ALPHA_VANTAGE_KEY")
+            or os.getenv("ALPHAVANTAGE_API_KEY")
+            or os.getenv("ALPHA_VANTAGE_API_KEY")
+            or os.getenv("ALPHAVANTAGE_NEWS_KEY")
+            or getattr(stocks, "API_KEY", None)
+        )
+        if alpha_key:
+            try:
+                time_from = cutoff.strftime("%Y%m%dT%H%M")
+                alpha_url = (
+                    "https://www.alphavantage.co/query?"
+                    f"function=NEWS_SENTIMENT&tickers={ticker}&limit=50&time_from={time_from}&apikey={alpha_key}"
+                )
+                alpha_resp = requests.get(alpha_url, timeout=10)
+                alpha_json = alpha_resp.json()
+                for item in alpha_json.get("feed") or []:
+                    add_headline(
+                        title=item.get("title"),
+                        url_=item.get("url"),
+                        source=item.get("source"),
+                        summary=item.get("summary"),
+                        published_at=item.get("time_published"),
+                        sentiment=item.get("overall_sentiment_label"),
+                    )
+            except Exception:
+                pass
+
+        headlines_raw.sort(
+            key=lambda h: h["published_at"] or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True
+        )
+        recent_headlines = [
+            h for h in headlines_raw
+            if h["published_at"] is None or h["published_at"] >= cutoff
+        ]
+        if recent_headlines:
+            selected_headlines = recent_headlines[:8]
+            coverage_window = "last 24 hours"
+        else:
+            selected_headlines = headlines_raw[:5]
+            coverage_window = "latest available (older than 24h)" if headlines_raw else "no verified coverage"
+
+        def format_headlines_for_prompt(items):
+            lines = []
+            for item in items:
+                ts = item["published_at"].strftime("%Y-%m-%d %H:%M UTC") if item["published_at"] else "time n/a"
+                line = f"{ts} - {item['title']}"
+                if item.get("source"):
+                    line += f" ({item['source']})"
+                details = []
+                if item.get("summary"):
+                    details.append(item["summary"])
+                if item.get("sentiment"):
+                    details.append(f"sentiment: {item['sentiment']}")
+                if details:
+                    line += " | " + " ".join(details)
+                lines.append(line)
+            return "\n".join(lines)
+
+        headlines_context = format_headlines_for_prompt(selected_headlines) if selected_headlines else ""
+        if not headlines_context:
+            headlines_context = "No verified coverage surfaced in the last 24 hours."
+
+        quote = get_global_quote(ticker) or {}
+        price = quote.get("price")
+        day_open = quote.get("open")
+        day_change = (price - day_open) if (price is not None and day_open is not None) else None
+        day_high = quote.get("high")
+        day_low = quote.get("low")
+        volume = quote.get("volume")
+
+        pe_ratio = safe_float(get_price_earnings_ratio(ticker))
+        market_cap = safe_float(get_market_cap(ticker))
+        dividend_yield = safe_float(get_dividend_yield(ticker))
+        week52_high = safe_float(get_52_week_high(ticker))
+        week52_low = safe_float(get_52_week_low(ticker))
+
+        fundamentals_context = "\n".join([
+            f"Price: {fmt_currency(price)} | Change vs open: {fmt_signed_currency(day_change)}",
+            f"Intraday range: {fmt_currency(day_low)} - {fmt_currency(day_high)} | Volume: {fmt_float(volume, 0)}",
+            f"Market cap: {fmt_market_cap(market_cap)} | P/E: {fmt_float(pe_ratio, 1)}",
+            f"Dividend yield: {fmt_percent(dividend_yield)} | 52-week range: {fmt_currency(week52_low)} - {fmt_currency(week52_high)}",
+        ])
+
+        summary_text = None
+        try:
+            model = ChatOpenAI(
+                temperature=0,
+                model_name="gpt-3.5-turbo",
+                api_key=OPEN_AI_API_KEY,
+            )
+            prompt = ChatPromptTemplate.from_messages([
+                (
+                    "system",
+                    "You craft clear, easy-to-read investor digests that explain why a ticker moved over the last 24 hours. "
+                    "Use simple language, cite only the provided facts, and never speculate about the future."
+                ),
+                (
+                    "user",
+                    "Ticker: {ticker}\n"
+                    "Coverage window: {coverage_window}\n"
+                    "Fundamentals snapshot:\n{fundamentals}\n"
+                    "Headlines and notes:\n{headlines}\n"
+                    "Instructions:\n"
+                    "- Start with one line containing a headline that states the main reason the stock moved (e.g., 'EARNINGS BOOST SNDX').\n"
+                    "- After the headline, include a blank line.\n"
+                    "- Follow with 2-4 short sections. Each section must be on its own line, begin with an ALL-CAPS header followed by a colon (e.g., 'EARNINGS:'), and contain 1-2 simple sentences about confirmed developments such as analyst calls, earnings, company announcements, sector trends, macro forces, or notable volume shifts.\n"
+                    "- Leave a blank line between sections for readability.\n"
+                    "- If news flow is thin, say that clearly and lean on valuation or macro context without making predictions.\n"
+                    "- Mention only what actually happened; do not provide forecasts or investment advice.\n"
+                    "- Stay under 160 words and keep the tone factual and easy to read."
+                ),
+            ])
+            chain = prompt | model
+            resp = chain.invoke({
+                "ticker": ticker,
+                "coverage_window": coverage_window,
+                "fundamentals": fundamentals_context,
+                "headlines": headlines_context,
+            })
+            summary_text = resp.content
+        except Exception:
+            summary_text = None
+
+        sources_payload = [{
+            "title": item["title"],
+            "url": item["url"],
+            "source": item.get("source"),
+            "publishedAt": item["published_at"].isoformat() if item["published_at"] else None,
+        } for item in selected_headlines] if selected_headlines else []
+
+        return jsonify({
+            "ticker": ticker,
+            "summary": summary_text or "Unable to generate digest at this time.",
+            "sources": sources_payload,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ---- Delete Portfolio ----
 @app.route("/api/delete-portfolio/<int:portfolio_id>", methods=["DELETE"])
@@ -487,11 +1070,16 @@ def delete_portfolio(portfolio_id):
 @app.route("/api/user_ID", methods=["POST"])
 def get_user_ID():
     data = request.get_json()
-    user_ID = data.get("user_ID")
+    raw_id = data.get("user_ID")
+    user_id = normalize_user_identifier(raw_id)
+    if user_id is None:
+        return jsonify({"status": "error", "message": "Invalid user_ID"}), 400
+
+    ensure_user_exists(user_id)
 
     response = jsonify({
-        "status": "initialized", 
-        "user_ID": user_ID
+        "status": "initialized",
+        "user_ID": user_id
     })
     
     return response
