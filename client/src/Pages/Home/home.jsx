@@ -11,6 +11,8 @@ import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx";
 import { StockSearch } from "../../Components/StockSearch/stockSearch.jsx";
 import { PortfolioChart } from "../../Components/PortfolioChart/portfolioChart.jsx";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
+
 export function Home() {
   const [buttonPopup, setButtonPopup] = useState(false);
   const [totalPortfolioValue, setTotalPortfolioValue] = useState(0);
@@ -23,12 +25,18 @@ export function Home() {
   const [lineData, setLineData] = useState([]);
   const [candleData, setCandleData] = useState([]);
   const questionQTYSelected = useSelector((state) => state.questionQTY.value);
+  const activeUserId = useSelector((state) => state.auth.userID);
 
   // ✅ Fetch all portfolios and calculate total
   useEffect(() => {
     async function fetchPortfolioSummary() {
       try {
-        const response = await fetch("http://127.0.0.1:5002/api/portfolios");
+        if (!activeUserId) {
+          setTotalPortfolioValue(0);
+          setTotalStocks(0);
+          return;
+        }
+        const response = await fetch(`${API_URL}/api/portfolios?userId=${encodeURIComponent(activeUserId)}`);
         const data = await response.json();
 
         let totalValue = 0;
@@ -49,14 +57,17 @@ export function Home() {
     }
 
     fetchPortfolioSummary();
-  }, []);
+  }, [activeUserId]);
 
   // Load performance series for selected range and compute header delta
   useEffect(() => {
     let active = true;
     async function loadSeries() {
       try {
-        const res = await fetch(`http://127.0.0.1:5002/api/portfolio-performance?range=${encodeURIComponent(timeFrame)}`);
+        const userQuery = activeUserId ? `&userId=${encodeURIComponent(activeUserId)}` : "";
+        const res = await fetch(
+          `${API_URL}/api/portfolio-performance?range=${encodeURIComponent(timeFrame)}${userQuery}`
+        );
         const json = await res.json();
         if (!active) return;
         const series = Array.isArray(json.series) ? json.series : [];
@@ -82,7 +93,7 @@ export function Home() {
     return () => {
       active = false;
     };
-  }, [timeFrame]);
+  }, [timeFrame, activeUserId]);
 
   function handleClick() {
     //if (isAuthenticated) {

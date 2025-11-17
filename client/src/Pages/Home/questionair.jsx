@@ -1,6 +1,7 @@
 import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAuth0 } from "@auth0/auth0-react";
 import axios from "axios";
 import "./Questionair.css";
 
@@ -11,6 +12,8 @@ export function Questionair() {
   //Fetching values from store and assigning them for use
   const portfolioName = useSelector((state) => state.portfolio.portfolioName);
   const questionQTY = useSelector((state) => state.questionQTY.value);
+  const activeUserId = useSelector((state) => state.auth.userID);
+  const { isAuthenticated, user, loginWithRedirect } = useAuth0();
   
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
@@ -22,7 +25,19 @@ export function Questionair() {
 
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
-  const DEFAULT_USER_ID = Number(import.meta.env.VITE_DEFAULT_USER_ID || 1);
+
+  // Resolve the current user id from Redux or Auth0
+  const resolvedUserId = activeUserId || user?.sub || null;
+
+  // Require a user id before allowing portfolio saves; trigger login if needed.
+  function requireUserId() {
+    if (resolvedUserId) return resolvedUserId;
+    setError("Please log in before saving portfolios.");
+    if (!isAuthenticated && loginWithRedirect) {
+      loginWithRedirect();
+    }
+    return null;
+  }
   
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
@@ -50,20 +65,27 @@ export function Questionair() {
   };
 
   async function fetchStockInfo(ticker) {
-  const res = await fetch(`${API_URL}/get-stock-info?ticker=${ticker}`);
-  const data = await res.json();
-  return data.info;
-}
+    try {
+      const res = await fetch(`${API_URL}/api/stock-info?ticker=${encodeURIComponent(ticker)}`);
+      if (!res.ok) {
+        throw new Error(`Stock info lookup failed (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error("Failed to fetch stock info:", err);
+      return null;
+    }
+  }
 
 useEffect(() => {
   async function loadInfo() {
     if (stock1 && stock1.ticker && !stock1.info) {
       const info = await fetchStockInfo(stock1.ticker);
-      setStock1(prev => ({ ...prev, info }));
+      if (info) setStock1(prev => ({ ...prev, info }));
     }
     if (stock2 && stock2.ticker && !stock2.info) {
       const info = await fetchStockInfo(stock2.ticker);
-      setStock2(prev => ({ ...prev, info }));
+      if (info) setStock2(prev => ({ ...prev, info }));
     }
   }
 
@@ -189,6 +211,9 @@ const sendStockPick = async (stock) => {
 
   // when user picks a stock
   const handlePick = async (stock) => {
+    const userId = requireUserId();
+    if (!userId) return;
+
     // stop if already completed
     if (isComplete || selectedStocks.length >= Number(questionQTY || 0)) {
       setIsComplete(true);
@@ -262,6 +287,9 @@ const sendStockPick = async (stock) => {
 
   // Save portfolio to backend
   const savePortfolio = (chosenStock) => {
+    const userId = requireUserId();
+    if (!userId) return;
+
     const name = portfolioName || "Untitled Portfolio";
     const description =
       selectedStocks.length > 0
@@ -274,21 +302,28 @@ const sendStockPick = async (stock) => {
       body: JSON.stringify({
         name,
         description,
-        userId: DEFAULT_USER_ID,
+        userId,
         stocks: [
           {
             ...chosenStock,
             price: chosenStock.price || 0,
+            quantity: chosenStock.quantity || 1,
+            transactionType: "BUY",
           },
         ],
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || data?.error) {
+          throw new Error(data?.message || data?.error || `Failed to save portfolio (${res.status})`);
+        }
         console.log("Portfolio saved:", data);
-        //alert(`Saved ${chosenStock.ticker} to portfolio: ${name}`); removed alert for better UX
       })
-      .catch((err) => console.error("Error saving portfolio:", err));
+      .catch((err) => {
+        console.error("Error saving portfolio:", err);
+        setError(err.message || "Error saving portfolio");
+      });
   };
 
   return (

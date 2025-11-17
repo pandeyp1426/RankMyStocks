@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from flask_cors import CORS
 from dotenv import load_dotenv
 import urllib.parse
+import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
@@ -18,7 +19,6 @@ import stocks
 load_dotenv()
 
 OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"
-DEFAULT_USER_ID = int(os.getenv("DEFAULT_USER_ID", 1))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 
@@ -71,6 +71,49 @@ def safe_quantity(val):
     if qty is None or qty <= 0:
         return 1.0
     return qty
+def normalize_user_identifier(identifier):
+    if identifier is None:
+        return None
+    if isinstance(identifier, (int, float)):
+        identifier = str(int(identifier))
+        return identifier
+
+    identifier = str(identifier).strip()
+    if not identifier:
+        return None
+
+    if identifier.isdigit():
+        return identifier
+
+    # Map non-numeric identifiers (e.g., Auth0 subs) to a stable numeric string
+    digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
+    # Keep within signed 32-bit int range to avoid DB overflow on INT columns
+    numeric_id = int(digest, 16) % 2_000_000_000
+    return str(numeric_id)
+
+def ensure_user_exists(user_id, role="user"):
+    if user_id is None:
+        return
+    user_id = str(user_id)
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_ID FROM user WHERE user_ID = %s", (user_id,))
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "INSERT INTO user (user_ID, user_role) VALUES (%s, %s)",
+                (user_id, role)
+            )
+            conn.commit()
+    except Exception as exc:
+        print(f"Warning: unable to ensure user {user_id} exists:", exc)
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def compute_portfolio_snapshot_values(cursor, portfolio_id):
     cursor.execute(
@@ -323,15 +366,16 @@ def create_portfolio():
     name = (data.get("name") or "").strip()
     stocks = data.get("stocks", [])   # [{ticker: 'AAPL', price: 123}, ...]
     description = (data.get("description") or "").strip()
-    requested_user_id = data.get("userId") or data.get("user_id") or DEFAULT_USER_ID
+    requested_user_id = data.get("userId") or data.get("user_id")
 
     if not name or not stocks:
         return jsonify({"error": "Missing name or stocks"}), 400
 
-    try:
-        user_id = int(requested_user_id)
-    except (TypeError, ValueError):
+    user_id = normalize_user_identifier(requested_user_id)
+    if user_id is None:
         return jsonify({"error": "Invalid user id"}), 400
+
+    ensure_user_exists(user_id)
 
     conn = None
     cursor = None
@@ -339,26 +383,11 @@ def create_portfolio():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Reuse existing portfolio for same user/name pair
         cursor.execute(
-            "SELECT id FROM portfolios WHERE name = %s AND user_id = %s",
-            (name, user_id)
+            "INSERT INTO portfolios (name, description, user_id) VALUES (%s, %s, %s)",
+            (name, description or None, user_id)
         )
-        existing = cursor.fetchone()
-
-        if existing:
-            portfolio_id = existing[0]
-            if description:
-                cursor.execute(
-                    "UPDATE portfolios SET description = %s WHERE id = %s",
-                    (description, portfolio_id)
-                )
-        else:
-            cursor.execute(
-                "INSERT INTO portfolios (name, description, user_id) VALUES (%s, %s, %s)",
-                (name, description or None, user_id)
-            )
-            portfolio_id = cursor.lastrowid
+        portfolio_id = cursor.lastrowid
 
         inserted_any = False
         for s in stocks:
@@ -481,7 +510,7 @@ def api_stock_stats():
 
 
 # ---- List Portfolios ----
-def _load_portfolios_from_db():
+def _load_portfolios_from_db(user_id=None):
     conn = None
     cursor = None
     try:
@@ -489,7 +518,7 @@ def _load_portfolios_from_db():
         cursor = conn.cursor(dictionary=True)
 
         # Include created_at and sort newest first (LIFO)
-        cursor.execute("""
+        base_query = """
             SELECT 
                 p.id, 
                 p.name, 
@@ -500,8 +529,14 @@ def _load_portfolios_from_db():
                 ps.price
             FROM portfolios p
             LEFT JOIN portfolio_stocks ps ON p.id = ps.portfolio_id
-            ORDER BY p.created_at DESC
-        """)
+        """
+        params = []
+        if user_id is not None:
+            base_query += " WHERE p.user_id = %s"
+            params.append(user_id)
+        base_query += " ORDER BY p.created_at DESC"
+
+        cursor.execute(base_query, params)
         rows = cursor.fetchall()
 
         portfolios = {}
@@ -545,8 +580,15 @@ def _load_portfolios_from_db():
 
 @app.route("/api/portfolios", methods=["GET"])
 def list_portfolios():
+    user_filter = request.args.get("userId")
+    user_id = None
+    if user_filter not in (None, "", "None"):
+        user_id = normalize_user_identifier(user_filter)
+        if user_id is None:
+            return jsonify({"status": "error", "message": "Invalid userId"}), 400
+
     try:
-        portfolios_map = _load_portfolios_from_db()
+        portfolios_map = _load_portfolios_from_db(user_id=user_id)
         sorted_portfolios = sorted(
             portfolios_map.values(),
             key=lambda x: x["created_at"] or "",
@@ -593,8 +635,15 @@ def attach_portfolio_performance(portfolios):
 
 @app.route("/api/portfolio-leaderboard", methods=["GET"])
 def portfolio_leaderboard():
+    user_filter = request.args.get("userId")
+    user_id = None
+    if user_filter not in (None, "", "None"):
+        user_id = normalize_user_identifier(user_filter)
+        if user_id is None:
+            return jsonify({"status": "error", "message": "Invalid userId"}), 400
+
     try:
-        portfolios_map = _load_portfolios_from_db()
+        portfolios_map = _load_portfolios_from_db(user_id=user_id)
         items = list(portfolios_map.values())
         attach_portfolio_performance(items)
         ranked = sorted(items, key=lambda p: p.get("currentValue") or 0.0, reverse=True)
@@ -608,14 +657,26 @@ def portfolio_performance():
     try:
         # range: 1D, 1W, 1M, 1Y, ALL
         rng = request.args.get("range", "1D").upper()
+        user_filter = request.args.get("userId")
+        user_id = None
+        if user_filter not in (None, "", "None"):
+            user_id = normalize_user_identifier(user_filter)
+            if user_id is None:
+                return jsonify({"status": "error", "message": "Invalid userId"}), 400
 
         # Compute current total value from DB (sum of all stocks' stored price)
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
+        base_query = """
             SELECT COALESCE(SUM(CASE WHEN ps.price IS NULL OR ps.price = '' OR ps.price = 'None' THEN 0 ELSE ps.price END), 0) AS total
             FROM portfolio_stocks ps
-        """)
+            INNER JOIN portfolios p ON p.id = ps.portfolio_id
+        """
+        params = []
+        if user_id is not None:
+            base_query += " WHERE p.user_id = %s"
+            params.append(user_id)
+        cursor.execute(base_query, params)
         row = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -1009,11 +1070,16 @@ def delete_portfolio(portfolio_id):
 @app.route("/api/user_ID", methods=["POST"])
 def get_user_ID():
     data = request.get_json()
-    user_ID = data.get("user_ID")
+    raw_id = data.get("user_ID")
+    user_id = normalize_user_identifier(raw_id)
+    if user_id is None:
+        return jsonify({"status": "error", "message": "Invalid user_ID"}), 400
+
+    ensure_user_exists(user_id)
 
     response = jsonify({
-        "status": "initialized", 
-        "user_ID": user_ID
+        "status": "initialized",
+        "user_ID": user_id
     })
     
     return response

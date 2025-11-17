@@ -101,6 +101,37 @@
   flex-wrap: wrap;
 }
 
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.view-toggle button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0.35rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.view-toggle button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.view-toggle button.active {
+  background: rgba(0, 249, 255, 0.2);
+  color: #0c0c21;
+}
+
+.view-toggle button:not(.active):hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
 .sort-pill {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid transparent;

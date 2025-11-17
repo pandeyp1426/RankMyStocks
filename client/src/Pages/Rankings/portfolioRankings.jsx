@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import "./portfolioRankings.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
@@ -14,9 +15,11 @@ function normalizeChange(value, asc) {
 }
 
 export function PortfolioRankings() {
+  const activeUserId = useSelector((state) => state.auth.userID);
   const [leaderboard, setLeaderboard] = useState([]);
   const [sortMode, setSortMode] = useState("value");
   const [ascending, setAscending] = useState(false);
+  const [scope, setScope] = useState("all"); // all | mine
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -26,7 +29,11 @@ export function PortfolioRankings() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(`${API_URL}/api/portfolio-leaderboard`);
+        const query = scope === "mine" && activeUserId
+          ? `?userId=${encodeURIComponent(activeUserId)}`
+          : "";
+        const url = `${API_URL}/api/portfolio-leaderboard${query}`;
+        const res = await fetch(url);
         const data = await res.json();
         if (!ignore) {
           if (!res.ok || data?.error) {
@@ -44,7 +51,7 @@ export function PortfolioRankings() {
     return () => {
       ignore = true;
     };
-  }, [API_URL]);
+  }, [API_URL, scope]);
 
   const sorted = useMemo(() => {
     const list = [...leaderboard];
@@ -127,6 +134,21 @@ export function PortfolioRankings() {
               {mode.label}
             </button>
           ))}
+        </div>
+        <div className="view-toggle">
+          <button
+            className={scope === "all" ? "active" : ""}
+            onClick={() => setScope("all")}
+          >
+            Community
+          </button>
+          <button
+            className={scope === "mine" ? "active" : ""}
+            onClick={() => activeUserId && setScope("mine")}
+            disabled={!activeUserId}
+          >
+            My Portfolios
+          </button>
         </div>
         <button
           className="order-toggle"

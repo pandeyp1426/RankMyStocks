@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import "./myPortfolios.css";
 import { Popup } from "../../Components/CreatePopUp/popup.jsx";
 import deleteIcon from "../../assets/img/delete.png";
@@ -53,6 +54,7 @@ function calculateChangePct(portfolio) {
 }
 
 export function MyPortfolios() {
+  const activeUserId = useSelector((state) => state.auth.userID);
   const [portfolios, setPortfolios] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [sortOption, setSortOption] = useState("date");
@@ -78,7 +80,14 @@ export function MyPortfolios() {
 
   // Fetch portfolios from backend
   useEffect(() => {
-    fetch(`${API_URL}/api/portfolios`)
+    if (!activeUserId) {
+      setPortfolios([]);
+      setFiltered([]);
+      setLoading(false);
+      return;
+    }
+    const url = `${API_URL}/api/portfolios?userId=${encodeURIComponent(activeUserId)}`;
+    fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch portfolios");
         return res.json();
@@ -94,7 +103,7 @@ export function MyPortfolios() {
         setError(err.message);
         setLoading(false);
       });
-  }, [API_URL]);
+  }, [API_URL, activeUserId]);
 
   // Sort portfolios by selected option
   function sortPortfolios(list, option, asc) {
