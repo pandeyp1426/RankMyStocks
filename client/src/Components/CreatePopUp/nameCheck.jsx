@@ -1,19 +1,20 @@
-import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useState } from "react";
+import { Popup } from "./Popup";
+import { QuestionnaireContent } from "./QuestionnaireContent";
 import "./nameCheck.css";
 
 export function NameCheck() {
-  const navigate = useNavigate();
   const portfolioName = useSelector((state) => state.portfolio.portfolioName);
   const [showError, setShowError] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   const handleCheck = () => {
     if (portfolioName === "") {
       setShowError(true);
     } else {
       setShowError(false);
-      navigate("/questionair");
+      setShowPopup(true);
     }
   };
 
@@ -26,6 +27,13 @@ export function NameCheck() {
       {showError && (
         <p className="error-text">Please enter a portfolio name.</p>
       )}
+
+      <Popup trigger={showPopup} setTrigger={setShowPopup}>
+        <QuestionnaireContent 
+          portfolioName={portfolioName}
+          onClose={() => setShowPopup(false)}
+        />
+      </Popup>
     </div>
   );
 }
