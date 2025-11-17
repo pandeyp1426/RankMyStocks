@@ -1,183 +1,372 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./portfolioChart.css";
 
-// Navigable SVG line chart with smooth curve and hover tooltip
-export function PortfolioChart({ lineData = [], color = "#00c27a", onCursorChange }) {
+export function PortfolioChart({
+  candleData = [],
+  width = 1000,
+  height = 500,
+  candleColorUp = "#00c27a",
+  candleColorDown = "#ff4d4f",
+}) {
   const svgRef = useRef(null);
-  const [hover, setHover] = useState(null); // { x, y, idx }
+  const [hover, setHover] = useState(null);
+  const [chartType, setChartType] = useState("candle"); // "candle" or "line"
 
   const parsed = useMemo(() => {
-    return Array.isArray(lineData)
-      ? lineData
-          .filter((d) => d && d.x != null && d.y != null)
-          .map((d) => ({ x: new Date(d.x), y: Number(d.y) || 0 }))
+    return Array.isArray(candleData)
+      ? candleData
+          .filter(d => d && d.x != null && d.open != null && d.high != null && d.low != null && d.close != null)
+          .map(d => ({
+            x: new Date(d.x),
+            open: Number(d.open),
+            high: Number(d.high),
+            low: Number(d.low),
+            close: Number(d.close),
+          }))
       : [];
-  }, [lineData]);
+  }, [candleData]);
 
-  // Dimensions via viewBox; scales adjust accordingly
-  const width = 1000;
-  const height = 400;
-  const padding = { top: 20, right: 16, bottom: 30, left: 40 };
+  // Adjusted padding - removed left padding for y-axis
+  const padding = { top: 30, right: 30, bottom: 50, left: 20 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
 
-  const xMin = parsed[0]?.x ?? new Date();
-  const xMax = parsed[parsed.length - 1]?.x ?? new Date();
-  const yVals = parsed.map((d) => d.y);
-  const rawMin = yVals.length ? Math.min(...yVals) : 0;
-  const rawMax = yVals.length ? Math.max(...yVals) : 1;
-  const pad = (rawMax - rawMin) * 0.07; // 7% padding top/bottom
-  const yMin = rawMin - pad;
-  const yMax = rawMax + pad;
-
-  function xScale(x) {
-    const a = xMin.getTime();
-    const b = xMax.getTime();
-    const t = (x.getTime() - a) / (b - a || 1);
-    return padding.left + t * innerW;
-  }
-  function yScale(y) {
-    const t = (y - yMin) / ((yMax - yMin) || 1);
-    return padding.top + innerH - t * innerH;
+  if (!parsed.length) {
+    return (
+      <div style={{ width, height, display: "flex", alignItems: "center", justifyContent: "center", color: "#555" }}>
+        No data available
+      </div>
+    );
   }
 
-  // Smooth path (Catmull–Rom to Bezier)
-  const points = useMemo(
-    () => parsed.map((d) => [xScale(d.x), yScale(d.y)]),
-    [parsed]
-  );
+  const yVals = parsed.flatMap(d => [d.high, d.low]);
+  const yMin = Math.min(...yVals) * 0.98;
+  const yMax = Math.max(...yVals) * 1.02;
 
-  function toSmoothPath(pts) {
-    if (pts.length === 0) return "";
-    if (pts.length === 1) return `M${pts[0][0]},${pts[0][1]}`;
-    const p = pts.map(([x, y]) => [x, y]);
-    p.unshift(p[0]);
-    p.push(p[p.length - 1]);
-    let d = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < p.length - 2; i++) {
-      const [p0x, p0y] = p[i - 1];
-      const [p1x, p1y] = p[i];
-      const [p2x, p2y] = p[i + 1];
-      const [p3x, p3y] = p[i + 2];
-      const cp1x = p1x + (p2x - p0x) / 6;
-      const cp1y = p1y + (p2y - p0y) / 6;
-      const cp2x = p2x - (p3x - p1x) / 6;
-      const cp2y = p2y - (p3y - p1y) / 6;
-      d += ` C${cp1x},${cp1y},${cp2x},${cp2y},${p2x},${p2y}`;
-    }
-    return d;
-  }
+  const xMin = parsed[0].x;
+  const xMax = parsed[parsed.length - 1].x;
 
-  const path = useMemo(() => toSmoothPath(points), [points]);
+  // Improved x-scale with proper spacing from edges
+  const xScale = (x, index) => {
+    const totalCandles = parsed.length;
+    const spacing = innerW / (totalCandles + 1);
+    return padding.left + spacing * (index + 1);
+  };
+
+  const yScale = y => padding.top + innerH - ((y - yMin) / (yMax - yMin)) * innerH;
+
+  // Better candle width calculation
+  const spacing = innerW / (parsed.length + 1);
+  const candleWidth = Math.min(Math.max(spacing * 0.6, 2), 20);
+
+  // Line path for line chart
+  const linePath = useMemo(() => {
+    if (parsed.length === 0) return "";
+    const points = parsed.map((d, i) => {
+      const x = xScale(d.x, i);
+      const y = yScale(d.close);
+      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+    return points;
+  }, [parsed, innerW, innerH]);
+
+  // Area path for line chart (with gradient fill)
   const areaPath = useMemo(() => {
-    if (points.length === 0) return "";
-    const top = path;
-    const [firstX] = points[0];
-    const [lastX] = points[points.length - 1];
-    const bottom = ` L${lastX},${yScale(yMin)} L${firstX},${yScale(yMin)} Z`;
-    return top + bottom;
-  }, [points, path, yMin]);
+    if (parsed.length === 0) return "";
+    const topPoints = parsed.map((d, i) => {
+      const x = xScale(d.x, i);
+      const y = yScale(d.close);
+      return `${x} ${y}`;
+    }).join(' L ');
+    
+    const bottomPoints = `L ${xScale(parsed[parsed.length - 1].x, parsed.length - 1)} ${height - padding.bottom} L ${xScale(parsed[0].x, 0)} ${height - padding.bottom} Z`;
+    return `M ${topPoints} ${bottomPoints}`;
+  }, [parsed, innerW, innerH]);
 
-  // Hover helpers
+  // Hover
   function findClosestIdx(clientX) {
-    if (!svgRef.current || parsed.length === 0) return null;
+    if (!svgRef.current) return null;
     const rect = svgRef.current.getBoundingClientRect();
-    const mx = clientX - rect.left - padding.left;
-    const px = parsed.map((d) => xScale(d.x))
-      .map((x) => x - padding.left);
+    const mx = clientX - rect.left;
     let best = 0;
     let bestDist = Infinity;
-    for (let i = 0; i < px.length; i++) {
-      const dist = Math.abs(px[i] - mx);
+    parsed.forEach((d, i) => {
+      const dist = Math.abs(xScale(d.x, i) - mx);
       if (dist < bestDist) {
         best = i;
         bestDist = dist;
       }
-    }
+    });
     return best;
   }
 
-  function onMouseMove(e) {
+  const onMouseMove = e => {
     const idx = findClosestIdx(e.clientX);
     if (idx == null) return;
     const d = parsed[idx];
-    const h = { x: xScale(d.x), y: yScale(d.y), idx };
-    setHover(h);
-    if (onCursorChange) {
-      const first = parsed[0]?.y ?? 0;
-      const delta = d.y - first;
-      const pct = first !== 0 ? (delta / first) * 100 : 0;
-      onCursorChange({ value: d.y, delta, pct });
-    }
-  }
+    setHover({ ...d, xPos: xScale(d.x, idx), idx });
+  };
 
-  function onLeave() {
-    setHover(null);
-  }
-
-  if (!parsed.length) {
-    return <div className="chart-status">No data yet</div>;
-  }
+  const onLeave = () => setHover(null);
 
   return (
-    <div className="portfolio-chart-inner">
-      <svg
-        ref={svgRef}
-        className="portfolio-chart__svg"
-        viewBox={`0 0 ${width} ${height}`}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onLeave}
-        role="img"
-        aria-label="Portfolio performance chart"
-      >
-        <defs>
-          <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
+    <div className="portfolio-chart-wrapper" style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div className="portfolio-chart-inner" style={{ position: "relative", width: "100%", height: "450px" }}>
+        <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "100%" }} onMouseMove={onMouseMove} onMouseLeave={onLeave}>
+          {/* Grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map(t => {
+            const y = padding.top + innerH - t * innerH;
+            return (
+              <line 
+                key={t} 
+                x1={padding.left} 
+                y1={y} 
+                x2={padding.left + innerW} 
+                y2={y} 
+                stroke="#f0f0f0" 
+                strokeWidth="1"
+              />
+            );
+          })}
 
-        {/* baseline */}
-        <line
-          x1={padding.left}
-          y1={yScale(yMin)}
-          x2={padding.left + innerW}
-          y2={yScale(yMin)}
-          stroke="#e6e6e6"
-        />
+          {/* X-axis line */}
+          <line 
+            x1={padding.left} 
+            y1={height - padding.bottom} 
+            x2={width - padding.right} 
+            y2={height - padding.bottom} 
+            stroke="#ddd" 
+            strokeWidth="2"
+          />
 
-        {/* area and line */}
-        <path d={areaPath} fill="url(#chartFill)" />
-        <path d={path} fill="none" stroke={color} strokeWidth="3.5" />
+          {/* Chart content based on type */}
+          {chartType === "candle" ? (
+            // Candle chart
+            <>
+              {parsed.map((d, i) => {
+                const x = xScale(d.x, i);
+                const yOpen = yScale(d.open);
+                const yClose = yScale(d.close);
+                const yHigh = yScale(d.high);
+                const yLow = yScale(d.low);
+                const color = d.close >= d.open ? candleColorUp : candleColorDown;
+                const top = Math.min(yOpen, yClose);
+                const bottom = Math.max(yOpen, yClose);
+                const bodyHeight = Math.max(bottom - top, 1);
+                
+                return (
+                  <g key={i}>
+                    <line 
+                      x1={x} 
+                      y1={yHigh} 
+                      x2={x} 
+                      y2={yLow} 
+                      stroke={color} 
+                      strokeWidth="1.5"
+                    />
+                    <rect 
+                      x={x - candleWidth / 2} 
+                      y={top} 
+                      width={candleWidth} 
+                      height={bodyHeight} 
+                      fill={color}
+                      stroke={color}
+                      strokeWidth="0.5"
+                    />
+                  </g>
+                );
+              })}
+            </>
+          ) : (
+            // Line chart
+            <>
+              <defs>
+                <linearGradient id="lineGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={candleColorUp} stopOpacity="0.3" />
+                  <stop offset="100%" stopColor={candleColorUp} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path 
+                d={areaPath} 
+                fill="url(#lineGradient)" 
+              />
+              <path 
+                d={linePath} 
+                fill="none" 
+                stroke={candleColorUp} 
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {/* Data points */}
+              {parsed.map((d, i) => {
+                const x = xScale(d.x, i);
+                const y = yScale(d.close);
+                return (
+                  <circle 
+                    key={i} 
+                    cx={x} 
+                    cy={y} 
+                    r="3" 
+                    fill={candleColorUp}
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                  />
+                );
+              })}
+            </>
+          )}
 
-        {/* hover elements */}
+          {/* X-axis labels (dates) */}
+          {parsed.map((d, i) => {
+            const labelInterval = Math.max(Math.ceil(parsed.length / 8), 1);
+            if (i % labelInterval !== 0 && i !== parsed.length - 1) return null;
+            const x = xScale(d.x, i);
+            return (
+              <text 
+                key={`x-${i}`} 
+                x={x} 
+                y={height - padding.bottom + 20} 
+                textAnchor="middle" 
+                fontSize="11" 
+                fill="#666"
+                fontFamily="sans-serif"
+              >
+                {d.x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </text>
+            );
+          })}
+
+          {/* Hover line */}
+          {hover && (
+            <>
+              <line 
+                x1={hover.xPos} 
+                y1={padding.top} 
+                x2={hover.xPos} 
+                y2={height - padding.bottom} 
+                stroke="#999" 
+                strokeWidth="1"
+                strokeDasharray="4,4" 
+              />
+              {/* Hover dot for line chart */}
+              {chartType === "line" && (
+                <circle 
+                  cx={hover.xPos} 
+                  cy={yScale(hover.close)} 
+                  r="5" 
+                  fill={candleColorUp}
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+              )}
+            </>
+          )}
+        </svg>
+
+        {/* Tooltip */}
         {hover && (
-          <>
-            <line
-              x1={hover.x}
-              y1={padding.top}
-              x2={hover.x}
-              y2={padding.top + innerH}
-              stroke="#cfefff"
-              strokeDasharray="4,4"
-            />
-            <circle cx={hover.x} cy={hover.y} r="4" fill={color} stroke="#fff" />
-          </>
-        )}
-      </svg>
-
-      {/* tooltip */}
-      {hover && parsed[hover.idx] && (
-        <div className="chart-tooltip" style={{ left: hover.x, top: hover.y }}>
-          <div className="chart-tooltip__value">
-            ${parsed[hover.idx].y.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+          <div 
+            className="chart-tooltip" 
+            style={{ 
+              position: "absolute", 
+              left: Math.min(hover.xPos + 15, width - 150), 
+              top: 10, 
+              background: "rgba(255, 255, 255, 0.95)", 
+              border: "1px solid #ccc", 
+              borderRadius: 8, 
+              padding: "8px 12px", 
+              fontSize: 12,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              fontFamily: "sans-serif",
+              pointerEvents: "none",
+              zIndex: 10
+            }}
+          >
+            <div style={{ fontWeight: "bold", marginBottom: 4, color: "#333" }}>
+              {hover.x.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            {chartType === "candle" ? (
+              <>
+                <div style={{ color: "#555" }}>Open: ${hover.open.toFixed(2)}</div>
+                <div style={{ color: "#555" }}>High: ${hover.high.toFixed(2)}</div>
+                <div style={{ color: "#555" }}>Low: ${hover.low.toFixed(2)}</div>
+                <div style={{ color: "#555" }}>Close: ${hover.close.toFixed(2)}</div>
+              </>
+            ) : (
+              <div style={{ color: "#555" }}>Price: ${hover.close.toFixed(2)}</div>
+            )}
           </div>
-          <div className="chart-tooltip__time">{parsed[hover.idx].x.toLocaleString()}</div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Chart type toggle buttons */}
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        gap: "8px", 
+        marginTop: "16px",
+        paddingBottom: "8px"
+      }}>
+        <button
+          onClick={() => setChartType("candle")}
+          style={{
+            padding: "8px 20px",
+            border: chartType === "candle" ? "2px solid #00c27a" : "2px solid #ddd",
+            borderRadius: "6px",
+            background: chartType === "candle" ? "#00c27a" : "#fff",
+            color: chartType === "candle" ? "#fff" : "#666",
+            fontWeight: chartType === "candle" ? "600" : "400",
+            fontSize: "13px",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            fontFamily: "sans-serif"
+          }}
+          onMouseEnter={(e) => {
+            if (chartType !== "candle") {
+              e.target.style.borderColor = "#00c27a";
+              e.target.style.color = "#00c27a";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (chartType !== "candle") {
+              e.target.style.borderColor = "#ddd";
+              e.target.style.color = "#666";
+            }
+          }}
+        >
+          Candle Chart
+        </button>
+        <button
+          onClick={() => setChartType("line")}
+          style={{
+            padding: "8px 20px",
+            border: chartType === "line" ? "2px solid #00c27a" : "2px solid #ddd",
+            borderRadius: "6px",
+            background: chartType === "line" ? "#00c27a" : "#fff",
+            color: chartType === "line" ? "#fff" : "#666",
+            fontWeight: chartType === "line" ? "600" : "400",
+            fontSize: "13px",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            fontFamily: "sans-serif"
+          }}
+          onMouseEnter={(e) => {
+            if (chartType !== "line") {
+              e.target.style.borderColor = "#00c27a";
+              e.target.style.color = "#00c27a";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (chartType !== "line") {
+              e.target.style.borderColor = "#ddd";
+              e.target.style.color = "#666";
+            }
+          }}
+        >
+          Line Chart
+        </button>
+      </div>
     </div>
   );
 }
