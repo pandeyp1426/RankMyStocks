@@ -7,7 +7,7 @@
 
 .questionnaire-content h2 {
   margin-bottom: 15px;
-  color: #333;
+  color: #ffffff;
   text-align: center;
 }
 
@@ -29,7 +29,7 @@
 
 .page-indicator {
   text-align: center;
-  color: #666;
+  color: #ffffff;
   font-size: 14px;
   margin-bottom: 20px;
 }
@@ -59,7 +59,7 @@
   display: block;
   margin-bottom: 10px;
   font-weight: 600;
-  color: #555;
+  color: #ffffff;
   font-size: 16px;
 }
 
