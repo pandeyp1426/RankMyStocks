@@ -11,21 +11,14 @@ export function QuestionnaireContent({ onComplete }) {
     investmentHorizon: "",
     experienceLevel: "",
     primaryGoal: "",
-<<<<<<< HEAD
-=======
     industrySector: "",
->>>>>>> f689cb9f6a0c7101758fd0773b12c3ab97a68de0
     marketCap: "",
     peRatio: "",
     dividends: "",
     analystRating: ""
   });
 
-<<<<<<< HEAD
-  const totalPages = 4; // Number of questions/pages
-=======
   const totalPages = 5; // Number of questions/pages
->>>>>>> f689cb9f6a0c7101758fd0773b12c3ab97a68de0
 
   const handleChange = (question, value) => {
     setAnswers(prev => ({
@@ -57,18 +50,6 @@ export function QuestionnaireContent({ onComplete }) {
   const isPageValid = () => {
     switch(currentPage) {
       case 1:
-<<<<<<< HEAD
-        return answers.riskTolerance !== "";
-      case 2:
-        return answers.investmentHorizon !== "";
-      case 3:
-        return answers.marketCap !== "" && 
-             answers.peRatio !== "" && 
-             answers.dividends !== "" && 
-             answers.analystRating !== "";
-      case 4:
-        return answers.primaryGoal !== "";
-=======
         return answers.experienceLevel !== "";
       case 2:
         return answers.primaryGoal !== "";
@@ -81,7 +62,6 @@ export function QuestionnaireContent({ onComplete }) {
                 answers.peRatio !== "" && 
                 answers.dividends !== "" && 
                 answers.analystRating !== "";
->>>>>>> f689cb9f6a0c7101758fd0773b12c3ab97a68de0
       default:
         return false;
     }
@@ -104,24 +84,6 @@ export function QuestionnaireContent({ onComplete }) {
         
         {/* Page 1 */}
         {currentPage === 1 && (
-<<<<<<< HEAD
-          <div className="question-page">
-            <div className="question-group">
-              <label>What is your experience level?</label>
-              <select
-                value={answers.riskTolerance}
-                onChange={(e) => handleChange("riskTolerance", e.target.value)}
-                required
-              >
-                <option value="">-- Select an option --</option>
-                <option value="conservative">Conservative</option>
-                <option value="moderate">Moderate</option>
-                <option value="aggressive">Aggressive</option>
-                <option value="very-aggressive">Very Aggressive</option>
-              </select>
-            </div>
-          </div>
-=======
         <div className="question-page">
             <div className="question-group">
             <label>What is your investment experience level?</label>
@@ -138,21 +100,10 @@ export function QuestionnaireContent({ onComplete }) {
             </select>
             </div>
         </div>
->>>>>>> f689cb9f6a0c7101758fd0773b12c3ab97a68de0
         )}
 
         {/* Page 2 */}
         {currentPage === 2 && (
-<<<<<<< HEAD
-          <div className="question-page">
-            <div className="question-group">
-              <label>What is your investment time horizon?</label>
-              <select
-                value={answers.investmentHorizon}
-                onChange={(e) => handleChange("investmentHorizon", e.target.value)}
-                required
-              >
-=======
         <div className="question-page">
             <div className="question-group">
             <label>What is your primary investment goal?</label>
@@ -182,31 +133,11 @@ export function QuestionnaireContent({ onComplete }) {
                 onChange={(e) => handleChange("investmentHorizon", e.target.value)}
                 required
             >
->>>>>>> f689cb9f6a0c7101758fd0773b12c3ab97a68de0
                 <option value="">-- Select an option --</option>
                 <option value="short">Short-term (0-3 years)</option>
                 <option value="medium">Medium-term (3-7 years)</option>
                 <option value="long">Long-term (7-15 years)</option>
                 <option value="very-long">Very Long-term (15+ years)</option>
-<<<<<<< HEAD
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Page 3 - Technical Preferences */}
-        {currentPage === 3 && (
-          <div className="question-page">
-            <h3 className="page-title">Technical Preferences</h3>
-            
-            <div className="question-group">
-              <label>Preferred Market Cap</label>
-              <select
-                value={answers.marketCap}
-                onChange={(e) => handleChange("marketCap", e.target.value)}
-                required
-              >
-=======
             </select>
             </div>
         </div>
@@ -254,7 +185,6 @@ export function QuestionnaireContent({ onComplete }) {
                 onChange={(e) => handleChange("marketCap", e.target.value)}
                 required
             >
->>>>>>> f689cb9f6a0c7101758fd0773b12c3ab97a68de0
                 <option value="">-- Select an option --</option>
                 <option value="mega">Mega Cap ($200B+)</option>
                 <option value="large">Large Cap ($10B - $200B)</option>
@@ -262,81 +192,6 @@ export function QuestionnaireContent({ onComplete }) {
                 <option value="small">Small Cap ($300M - $2B)</option>
                 <option value="micro">Micro Cap (Under $300M)</option>
                 <option value="any">Any Market Cap</option>
-<<<<<<< HEAD
-              </select>
-            </div>
-
-            <div className="question-group">
-              <label>P/E Ratio Preference</label>
-              <select
-                value={answers.peRatio}
-                onChange={(e) => handleChange("peRatio", e.target.value)}
-                required
-              >
-                <option value="">-- Select an option --</option>
-                <option value="under-15">Under 15 (Value)</option>
-                <option value="15-25">15 - 25 (Moderate)</option>
-                <option value="25-40">25 - 40 (Growth)</option>
-                <option value="over-40">Over 40 (High Growth)</option>
-                <option value="negative">Negative/No Earnings</option>
-                <option value="any">Any P/E Ratio</option>
-              </select>
-            </div>
-
-            <div className="question-group">
-              <label>Dividend Preference</label>
-              <select
-                value={answers.dividends}
-                onChange={(e) => handleChange("dividends", e.target.value)}
-                required
-              >
-                <option value="">-- Select an option --</option>
-                <option value="yes">Yes - Dividend Paying Only</option>
-                <option value="no">No - Growth Stocks Preferred</option>
-                <option value="either">Either - No Preference</option>
-              </select>
-            </div>
-
-            <div className="question-group">
-              <label>Analyst Rating Preference</label>
-              <select
-                value={answers.analystRating}
-                onChange={(e) => handleChange("analystRating", e.target.value)}
-                required
-              >
-                <option value="">-- Select an option --</option>
-                <option value="a">A Rated - Strong Buy</option>
-                <option value="b">B Rated - Buy</option>
-                <option value="c">C Rated - Hold</option>
-                <option value="d">D Rated - Underperform</option>
-                <option value="f">F Rated - Sell</option>
-                <option value="any">Any Rating</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-
-        {/* Page 4 */}
-        {currentPage === 4 && (
-          <div className="question-page">
-            <div className="question-group">
-              <label>Do you prefer a certain Industry/Sector?</label>
-              <select
-                value={answers.primaryGoal}
-                onChange={(e) => handleChange("primaryGoal", e.target.value)}
-                required
-              >
-                <option value="">-- Select an option --</option>
-                <option value="income">Generate Income</option>
-                <option value="growth">Capital Growth</option>
-                <option value="preservation">Wealth Preservation</option>
-                <option value="balanced">Balanced Approach</option>
-                <option value="retirement">Retirement Planning</option>
-              </select>
-            </div>
-          </div>
-=======
             </select>
             </div>
 
@@ -386,7 +241,6 @@ export function QuestionnaireContent({ onComplete }) {
             </select>
             </div>
         </div>
->>>>>>> f689cb9f6a0c7101758fd0773b12c3ab97a68de0
         )}
 
         {/* Navigation Buttons */}

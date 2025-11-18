@@ -2,8 +2,6 @@ import { useSelector } from "react-redux";
 import { useState } from "react";
 import { Popup } from "./Popup";
 import { QuestionnaireContent } from "./questionnaireContent.jsx";
-import { Popup } from "./Popup";
-import { QuestionnaireContent } from "./QuestionnaireContent";
 import "./nameCheck.css";
 
 export function NameCheck() {
