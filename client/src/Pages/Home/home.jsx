@@ -338,7 +338,7 @@ export function Home() {
               }
             }
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1));
 
           } catch (err) {
             console.error(`Error fetching data for ${ticker}:`, err);
