@@ -1,6 +1,7 @@
 // QuestionnaireContent.jsx
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+
 import "./questionnaireContent.css";
 
 export function QuestionnaireContent({ onComplete }) {
@@ -41,8 +42,6 @@ export function QuestionnaireContent({ onComplete }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Save answers to Redux or send to API
-    // dispatch(saveAnswers(answers));
     onComplete(answers);
   };
 
