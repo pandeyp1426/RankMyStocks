@@ -13,7 +13,7 @@ import { PortfolioChart } from "../../Components/PortfolioChart/portfolioChart.j
 
 export function Home() {
   const { isAuthenticated, isLoading } = useAuth0();
-  const activeUserId = useSelector((state) => state.auth.userID); // Get user ID from Redux
+  const activeUserId = useSelector((state) => state.auth.userID);
   const [buttonPopup, setButtonPopup] = useState(false);
   const [totalPortfolioValue, setTotalPortfolioValue] = useState(0);
   const [portfolios, setPortfolios] = useState([]);
@@ -23,9 +23,10 @@ export function Home() {
   const [chartPct, setChartPct] = useState(null);
   const [lineData, setLineData] = useState([]);
   const [candleData, setCandleData] = useState([]);
-  const [allCandleData, setAllCandleData] = useState([]); // Store all fetched data
-  const [intradayData, setIntradayData] = useState([]); // Store intraday data for 1D
+  const [allCandleData, setAllCandleData] = useState([]);
+  const [intradayData, setIntradayData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
+  const [latestPrices, setLatestPrices] = useState({}); // Store latest price for each stock
 
   function handleClick() {
     setButtonPopup(true);
@@ -34,7 +35,6 @@ export function Home() {
   // Fetch portfolio summary
   useEffect(() => {
     async function fetchPortfolioSummary() {
-      // Wait for Auth0 to load
       if (isLoading) return;
       
       if (!isAuthenticated || !activeUserId) {
@@ -45,22 +45,42 @@ export function Home() {
       }
       
       try {
-        // Fetch portfolios with userId query parameter (same as myPortfolios.jsx)
         const response = await fetch(`http://127.0.0.1:5002/api/portfolios?userId=${encodeURIComponent(activeUserId)}`);
         const userPortfolios = await response.json();
 
         console.log("Active user ID:", activeUserId);
         console.log("User's portfolios:", userPortfolios);
 
-        let totalValue = 0;
-        let stockCount = 0;
-
+        // Build ticker count map
+        const tickerCount = {};
         userPortfolios.forEach((p) => {
           p.stocks?.forEach((s) => {
-            totalValue += parseFloat(s.price || 0);
-            stockCount += 1;
+            const ticker = s.ticker;
+            if (!tickerCount[ticker]) {
+              tickerCount[ticker] = 0;
+            }
+            tickerCount[ticker] += 1;
           });
         });
+
+        let stockCount = Object.values(tickerCount).reduce((a, b) => a + b, 0);
+
+        // Calculate total value using latest prices from latestPrices state
+        let totalValue = 0;
+        Object.entries(tickerCount).forEach(([ticker, count]) => {
+          const currentPrice = latestPrices[ticker] || 0;
+          totalValue += currentPrice * count;
+        });
+
+        // If latestPrices is empty (still loading), use portfolio prices as fallback
+        if (Object.keys(latestPrices).length === 0) {
+          totalValue = 0;
+          userPortfolios.forEach((p) => {
+            p.stocks?.forEach((s) => {
+              totalValue += parseFloat(s.price || 0);
+            });
+          });
+        }
 
         setTotalPortfolioValue(totalValue);
         setTotalStocks(stockCount);
@@ -71,13 +91,12 @@ export function Home() {
     }
 
     fetchPortfolioSummary();
-  }, [isAuthenticated, isLoading, activeUserId]);
+  }, [isAuthenticated, isLoading, activeUserId, latestPrices]);
 
   // Aggregate candles by period (week or month)
   function aggregateCandlesByPeriod(data, periodDays) {
     if (!data || data.length === 0) return data;
     
-    // If daily, return as-is
     if (periodDays === 1) {
       return data;
     }
@@ -89,13 +108,11 @@ export function Home() {
       let periodKey;
       
       if (periodDays === 7) {
-        // Weekly - group by week (starting Sunday)
         const weekStart = new Date(date);
         weekStart.setDate(date.getDate() - date.getDay());
         weekStart.setHours(0, 0, 0, 0);
         periodKey = weekStart.getTime();
       } else {
-        // Monthly - group by month
         periodKey = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
       }
       
@@ -109,10 +126,9 @@ export function Home() {
           first: true
         };
       } else {
-        // Aggregate: keep first open, highest high, lowest low, last close
         grouped[periodKey].high = Math.max(grouped[periodKey].high, candle.high);
         grouped[periodKey].low = Math.min(grouped[periodKey].low, candle.low);
-        grouped[periodKey].close = candle.close; // Last close in period
+        grouped[periodKey].close = candle.close;
       }
     });
     
@@ -133,12 +149,12 @@ export function Home() {
 
     switch (timeframe) {
       case "1D":
-        // For 1D with intraday data, just take the most recent 100 points
-        // This ensures we always show data even if timezone is off
-        filtered = data.slice(-100); // Last 100 intraday points
-        console.log("1D filter - taking last 100 points from intraday data");
-        console.log("Earliest point:", new Date(filtered[0]?.x));
-        console.log("Latest point:", new Date(filtered[filtered.length - 1]?.x));
+        filtered = data.slice(-30);
+        console.log("1D filter - taking last 30 points from intraday data");
+        if (filtered.length > 0) {
+          console.log("Earliest point:", new Date(filtered[0]?.x));
+          console.log("Latest point:", new Date(filtered[filtered.length - 1]?.x));
+        }
         return filtered;
       case "1W":
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -161,7 +177,6 @@ export function Home() {
         break;
     }
 
-    // Filter by date range (for non-1D timeframes)
     filtered = data.filter(point => {
       const pointDate = new Date(point.x);
       return pointDate >= startDate;
@@ -169,7 +184,6 @@ export function Home() {
     
     console.log(`Filtered from ${data.length} to ${filtered.length} points for ${timeframe}`);
     
-    // Aggregate if needed
     if (aggregateDays > 1) {
       filtered = aggregateCandlesByPeriod(filtered, aggregateDays);
     }
@@ -180,7 +194,6 @@ export function Home() {
   // Fetch candle data for chart - only runs once on mount
   useEffect(() => {
     async function loadPortfolioCandles() {
-      // Wait for Auth0 to load
       if (isLoading) {
         return;
       }
@@ -199,7 +212,6 @@ export function Home() {
       }
 
       try {
-        // Fetch portfolios with userId query parameter (same as myPortfolios.jsx)
         const res = await fetch(`http://127.0.0.1:5002/api/portfolios?userId=${encodeURIComponent(activeUserId)}`);
         const userPortfolios = await res.json();
         
@@ -212,8 +224,6 @@ export function Home() {
           return;
         }
 
-        // Build a map of ticker -> count (how many times it appears across user's portfolios)
-        // Since this is fantasy draft style, each stock = 1 unit regardless of price
         const tickerCount = {};
         userPortfolios.forEach(p => {
           p.stocks?.forEach(s => {
@@ -221,7 +231,7 @@ export function Home() {
             if (!tickerCount[ticker]) {
               tickerCount[ticker] = 0;
             }
-            tickerCount[ticker] += 1; // Count each occurrence
+            tickerCount[ticker] += 1;
           });
         });
 
@@ -230,8 +240,20 @@ export function Home() {
         console.log("Total unique stocks:", uniqueTickers.length);
         console.log("Total stock picks:", Object.values(tickerCount).reduce((a, b) => a + b, 0));
 
-        const stockDataMap = {}; // ticker -> array of OHLC data
-        const intradayDataMap = {}; // ticker -> array of intraday data
+        const stockDataMap = {};
+        const intradayDataMap = {};
+        const latestPriceMap = {}; // Track latest price for each stock
+
+        // First, get latest prices from your portfolio data (as fallback)
+        userPortfolios.forEach(p => {
+          p.stocks?.forEach(s => {
+            if (s.ticker && s.price) {
+              latestPriceMap[s.ticker] = parseFloat(s.price);
+            }
+          });
+        });
+        
+        console.log("Initial prices from portfolio:", latestPriceMap);
 
         // Fetch both daily and intraday data
         for (const ticker of uniqueTickers) {
@@ -252,10 +274,29 @@ export function Home() {
                 close: Number(values["4. close"]),
               }));
               stockDataMap[ticker] = ohlc;
-              console.log(`Fetched ${ohlc.length} daily data points for ${ticker}`);
+              
+              // Store the most recent close price (update if more recent than portfolio data)
+              if (ohlc.length > 0) {
+                const sortedOhlc = [...ohlc].sort((a, b) => b.x - a.x);
+                latestPriceMap[ticker] = sortedOhlc[0].close;
+              }
+              
+              console.log(`Fetched ${ohlc.length} daily data points for ${ticker}, latest: ${latestPriceMap[ticker]?.toFixed(2)}`);
+            } else {
+              console.warn(`No daily data for ${ticker}, using portfolio price: ${latestPriceMap[ticker]?.toFixed(2)}`);
+              // Create a synthetic data point using portfolio price if no API data
+              if (latestPriceMap[ticker]) {
+                const now = Date.now();
+                stockDataMap[ticker] = [{
+                  x: now,
+                  open: latestPriceMap[ticker],
+                  high: latestPriceMap[ticker],
+                  low: latestPriceMap[ticker],
+                  close: latestPriceMap[ticker],
+                }];
+              }
             }
 
-            // Small delay to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 500));
 
             // Fetch intraday data for 1D view
@@ -274,16 +315,43 @@ export function Home() {
                 close: Number(values["4. close"]),
               }));
               intradayDataMap[ticker] = intraday;
+              
+              // Update latest price if intraday has more recent data
+              if (intraday.length > 0) {
+                const sortedIntraday = [...intraday].sort((a, b) => b.x - a.x);
+                latestPriceMap[ticker] = sortedIntraday[0].close;
+              }
+              
               console.log(`Fetched ${intraday.length} intraday data points for ${ticker}`);
+            } else {
+              console.warn(`No intraday data for ${ticker}`);
+              // Create synthetic intraday point using latest price
+              if (latestPriceMap[ticker]) {
+                const now = Date.now();
+                intradayDataMap[ticker] = [{
+                  x: now,
+                  open: latestPriceMap[ticker],
+                  high: latestPriceMap[ticker],
+                  low: latestPriceMap[ticker],
+                  close: latestPriceMap[ticker],
+                }];
+              }
             }
 
-            // Another delay to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 500));
 
           } catch (err) {
             console.error(`Error fetching data for ${ticker}:`, err);
+            // Even on error, ensure we have a fallback price
+            if (!latestPriceMap[ticker]) {
+              console.error(`No price available for ${ticker} - this stock will be excluded from charts`);
+            }
           }
         }
+
+        // Store latest prices
+        setLatestPrices(latestPriceMap);
+        console.log("Latest prices:", latestPriceMap);
 
         if (Object.keys(stockDataMap).length === 0) {
           console.error("No stock data fetched");
@@ -292,24 +360,41 @@ export function Home() {
         }
 
         // Calculate total portfolio value for each timestamp (daily)
-        // Sum up all stock prices (each stock counts once per pick)
+        // Get all unique timestamps first
+        const allDailyTimestamps = new Set();
+        Object.values(stockDataMap).forEach(ohlcArray => {
+          ohlcArray.forEach(point => allDailyTimestamps.add(point.x));
+        });
+
+        const sortedDailyTimestamps = Array.from(allDailyTimestamps).sort((a, b) => a - b);
+        
+        // For each timestamp, calculate portfolio value using latest available price
         const dateMap = {};
-        Object.entries(stockDataMap).forEach(([ticker, ohlcArray]) => {
-          const count = tickerCount[ticker]; // How many times this stock was picked
-          ohlcArray.forEach(point => {
-            if (!dateMap[point.x]) {
-              dateMap[point.x] = { 
-                open: 0, 
-                high: 0, 
-                low: 0, 
-                close: 0
-              };
+        const lastKnownDailyPrice = {}; // Track last known price for each stock
+        
+        sortedDailyTimestamps.forEach(timestamp => {
+          dateMap[timestamp] = { open: 0, high: 0, low: 0, close: 0 };
+          
+          Object.entries(tickerCount).forEach(([ticker, count]) => {
+            // Find the data point for this stock at this timestamp
+            const stockData = stockDataMap[ticker];
+            const dataPoint = stockData?.find(p => p.x === timestamp);
+            
+            if (dataPoint) {
+              // Stock traded at this time, use actual values
+              lastKnownDailyPrice[ticker] = dataPoint.close;
+              dateMap[timestamp].open += dataPoint.open * count;
+              dateMap[timestamp].high += dataPoint.high * count;
+              dateMap[timestamp].low += dataPoint.low * count;
+              dateMap[timestamp].close += dataPoint.close * count;
+            } else {
+              // Stock didn't trade, use last known price or latest price
+              const priceToUse = lastKnownDailyPrice[ticker] || latestPriceMap[ticker] || 0;
+              dateMap[timestamp].open += priceToUse * count;
+              dateMap[timestamp].high += priceToUse * count;
+              dateMap[timestamp].low += priceToUse * count;
+              dateMap[timestamp].close += priceToUse * count;
             }
-            // Add the stock price for each time it was picked
-            dateMap[point.x].open += point.open * count;
-            dateMap[point.x].high += point.high * count;
-            dateMap[point.x].low += point.low * count;
-            dateMap[point.x].close += point.close * count;
           });
         });
 
@@ -332,22 +417,41 @@ export function Home() {
         }
         
         // Calculate total portfolio value for each timestamp (intraday)
+        // Get all unique timestamps first
+        const allTimestamps = new Set();
+        Object.values(intradayDataMap).forEach(ohlcArray => {
+          ohlcArray.forEach(point => allTimestamps.add(point.x));
+        });
+
+        const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+        
+        // For each timestamp, calculate portfolio value using latest available price
         const intradayMap = {};
-        Object.entries(intradayDataMap).forEach(([ticker, ohlcArray]) => {
-          const count = tickerCount[ticker];
-          ohlcArray.forEach(point => {
-            if (!intradayMap[point.x]) {
-              intradayMap[point.x] = { 
-                open: 0, 
-                high: 0, 
-                low: 0, 
-                close: 0
-              };
+        const lastKnownPrice = {}; // Track last known price for each stock
+        
+        sortedTimestamps.forEach(timestamp => {
+          intradayMap[timestamp] = { open: 0, high: 0, low: 0, close: 0 };
+          
+          Object.entries(tickerCount).forEach(([ticker, count]) => {
+            // Find the data point for this stock at this timestamp
+            const stockData = intradayDataMap[ticker];
+            const dataPoint = stockData?.find(p => p.x === timestamp);
+            
+            if (dataPoint) {
+              // Stock traded at this time, use actual values
+              lastKnownPrice[ticker] = dataPoint.close;
+              intradayMap[timestamp].open += dataPoint.open * count;
+              intradayMap[timestamp].high += dataPoint.high * count;
+              intradayMap[timestamp].low += dataPoint.low * count;
+              intradayMap[timestamp].close += dataPoint.close * count;
+            } else {
+              // Stock didn't trade, use last known price or latest price
+              const priceToUse = lastKnownPrice[ticker] || latestPriceMap[ticker] || 0;
+              intradayMap[timestamp].open += priceToUse * count;
+              intradayMap[timestamp].high += priceToUse * count;
+              intradayMap[timestamp].low += priceToUse * count;
+              intradayMap[timestamp].close += priceToUse * count;
             }
-            intradayMap[point.x].open += point.open * count;
-            intradayMap[point.x].high += point.high * count;
-            intradayMap[point.x].low += point.low * count;
-            intradayMap[point.x].close += point.close * count;
           });
         });
 
@@ -373,7 +477,6 @@ export function Home() {
         setAllCandleData(merged);
         setIntradayData(mergedIntraday);
         
-        // Create line series for potential use
         const lineSeries = merged.map(point => ({ x: point.x, y: point.close }));
         setLineData(lineSeries);
 
@@ -385,7 +488,7 @@ export function Home() {
     }
 
     loadPortfolioCandles();
-  }, [isAuthenticated, isLoading, activeUserId]); // Re-run when auth state or user ID changes
+  }, [isAuthenticated, isLoading, activeUserId]);
 
   // Update displayed data when timeframe changes or data loads
   useEffect(() => {
@@ -393,7 +496,6 @@ export function Home() {
     console.log("Daily data length:", allCandleData.length);
     console.log("Intraday data length:", intradayData.length);
     
-    // Use intraday data for 1D, otherwise use daily data
     const dataToFilter = timeFrame === "1D" ? intradayData : allCandleData;
     
     if (dataToFilter.length === 0) {
@@ -409,14 +511,12 @@ export function Home() {
     
     setCandleData(filteredData);
 
-    // Calculate delta and percentage based on filtered data
     if (filteredData.length > 1) {
       const first = filteredData[0].open;
       const last = filteredData[filteredData.length - 1].close;
       setChartDelta(last - first);
       setChartPct(first !== 0 ? ((last - first) / first) * 100 : 0);
     } else if (filteredData.length === 1) {
-      // Only one data point
       setChartDelta(0);
       setChartPct(0);
     } else {
