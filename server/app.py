@@ -142,7 +142,6 @@ def initialize():
     data = request.get_json()
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
-    questionnaireAnswers = data.get("questionnaireAnswers")
     stock_list = stocks.generate_ticker_list(questionQTY * 2)
     portfolio = []
     
@@ -158,7 +157,6 @@ def initialize():
         "questionQTY": questionQTY, 
         "portfolioName": portolfioName,
         "stock_list": stock_list
-        "questionnaireAnswers": questionnaireAnswers
     })
 
     return response

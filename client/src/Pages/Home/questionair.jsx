@@ -2,7 +2,6 @@ import { useSelector } from 'react-redux';
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { QuestionnaireContent } from "../../Components/CreatePopUp/questionnaireContent";
 import "./Questionair.css";
 
 axios.defaults.withCredentials = true;
@@ -19,26 +18,10 @@ export function Questionair() {
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [questionnaireAnswers, setQuestionnaireAnswers] = useState(null);
   const didFetchRef = useRef(false);
 
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
-  
-  // Handle questionnaire completion
-  const handleQuestionnaireComplete = async (answers) => {
-    setQuestionnaireAnswers(answers);
-    console.log('Received questionnaire answers:', answers);
-    
-    // Send answers to backend and trigger stock selection flow
-    try {
-      await sendQuestionQTY();
-      await getNextPair();
-      await fetchStockData();
-    } catch (err) {
-      console.error('Error starting stock selection:', err);
-    }
-  };
   
   // fetch two unique random stocks
   const fetchTwoStocks = async () => {
@@ -92,15 +75,14 @@ useEffect(() => {
     try {
       const response = await axios.post(`${API_URL}/init`, {
         portfolioName: portfolioName,
-        questionQTY: questionQTY,
-        questionnaireAnswers: questionnaireAnswers
+        questionQTY: questionQTY
     },
     {
       withCredentials: true
     }
   );
 
-    console.log("Successfully sent questionQTY and preferences:", response.data);
+    console.log("Successfully sent questionQTY:", response.data);
     return response.data;
   } catch (err) {
     console.error("Error sending questionQTY:", err);
@@ -282,34 +264,29 @@ const sendStockPick = async (stock) => {
     <div className="questionair-wrapper">
       {/* LEFT MAIN BOX */}
       <div className="question-box">
-        {/* Show questionnaire if answers not yet submitted */}
-        {!questionnaireAnswers ? (
-          <QuestionnaireContent onComplete={handleQuestionnaireComplete} />
-        ) : (
-          <>
-            <div className="questionair-header">
-              <h1>{portfolioName || "Your Portfolio"}</h1>
-              <p>{questionQTY} Rounds</p>
-              <p>Rounds Left: {Math.max(0, Number(questionQTY || 0) - selectedStocks.length)}</p>
-              <h2>Which stock would you prefer?</h2>
-            </div>
+        <div className="questionair-header">
+          <h1>{portfolioName || "Your Portfolio"}</h1>
+          <p>{questionQTY} Rounds</p>
+          <p>Rounds Left: {Math.max(0, Number(questionQTY || 0) - selectedStocks.length)}</p>
+          <h2>Which stock would you prefer?</h2>
+        </div>
 
-            {!isComplete && (
-            <div className="stock-compare-container">
+        {!isComplete && (
+        <div className="stock-compare-container">
               {stock1 && (
                 <div
                   className="stock-card"
                   onClick={() => !isComplete && handlePick(stock1)}
                   role="button"
                   tabIndex={0}
-                >
-                  <button className="info-icon" title={stock1.description}>ⓘ</button>
-                  <h3 className="stock-ticker">{stock1.ticker}</h3>
-                  <p className="stock-name">{stock1.name}</p>
-                  <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
-                  <p className="stock-change positive">+2.34 (+1.35%)</p>
-                </div>
-              )}
+            >
+              <button className="info-icon" title={stock1.description}>ⓘ</button>
+              <h3 className="stock-ticker">{stock1.ticker}</h3>
+              <p className="stock-name">{stock1.name}</p>
+              <p className="stock-price">${Number(stock1.price).toFixed(2)}</p>
+              <p className="stock-change positive">+2.34 (+1.35%)</p>
+            </div>
+          )}
 
               <div className="vs-text">VS</div>
 
@@ -328,20 +305,18 @@ const sendStockPick = async (stock) => {
                 </div>
               )}
             </div>
-            )}
+        )}
 
-            {isComplete ? (
-              <div className="complete-box">
-                <h3>All rounds completed!</h3>
-                <p>Your selections have been saved to the portfolio.</p>
-                <Link to="/myPortfolios" className="hero-button" style={{textDecoration:'none'}}>View My Portfolios</Link>
-              </div>
-            ) : (
-              <button className="reroll-button" onClick={handleReroll}>
-                Reroll Stocks
-              </button>
-            )}
-          </>
+        {isComplete ? (
+          <div className="complete-box">
+            <h3>All rounds completed!</h3>
+            <p>Your selections have been saved to the portfolio.</p>
+            <Link to="/myPortfolios" className="hero-button" style={{textDecoration:'none'}}>View My Portfolios</Link>
+          </div>
+        ) : (
+          <button className="reroll-button" onClick={handleReroll}>
+            Reroll Stocks
+          </button>
         )}
       </div>
 

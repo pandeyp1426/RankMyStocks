@@ -1,11 +1,13 @@
 // QuestionnaireContent.jsx
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 import "./questionnaireContent.css";
 
 export function QuestionnaireContent({ onComplete }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [answers, setAnswers] = useState({
     riskTolerance: "",
@@ -42,7 +44,7 @@ export function QuestionnaireContent({ onComplete }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onComplete(answers);
+    navigate("/questionair");
   };
 
   // Check if current page is filled out
