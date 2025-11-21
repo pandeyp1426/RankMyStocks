@@ -131,7 +131,7 @@ def get_stock_data():
         return jsonify({"error": str(e)}), 500
 
 #creates list of stocks based on useres preferences
-def filter_list(answers, questionQTY=5):
+def filter_list(answers, questionQTY):
     #first filter by industry
     industry = answers.get("industrySector", "any")
     
@@ -169,9 +169,9 @@ def initialize():
     portolfioName = data.get("portfolioName")
     answers = data.get("answers")
     
-    filtered_stocks = filter_list(answers)
+    filtered_stocks = filter_list(answers, questionQTY)
     
-    stock_list = stocks.generate_ticker_list(questionQTY * 2) #this will change to be based on user answers
+    stock_list = filtered_stocks
     portfolio = []
 
     print("Answers received in init:", answers)
