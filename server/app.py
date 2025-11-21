@@ -142,8 +142,11 @@ def initialize():
     data = request.get_json()
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
+    answers = data.get("answers")
     stock_list = stocks.generate_ticker_list(questionQTY * 2)
     portfolio = []
+
+    print("Answers received in init:", answers)
     
     
     #set session variables 

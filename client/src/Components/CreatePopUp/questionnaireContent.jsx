@@ -4,13 +4,13 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 import "./questionnaireContent.css";
+import { setQuestionnaireAnswers } from "./questionnaireSlicer";
 
 export function QuestionnaireContent({ onComplete }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [answers, setAnswers] = useState({
-    riskTolerance: "",
     investmentHorizon: "",
     experienceLevel: "",
     primaryGoal: "",
@@ -44,6 +44,10 @@ export function QuestionnaireContent({ onComplete }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Dispatch answers to Redux store
+    dispatch(setQuestionnaireAnswers(answers));
+
     navigate("/questionair");
   };
 

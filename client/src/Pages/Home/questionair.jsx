@@ -11,6 +11,9 @@ export function Questionair() {
   //Fetching values from store and assigning them for use
   const portfolioName = useSelector((state) => state.portfolio.portfolioName);
   const questionQTY = useSelector((state) => state.questionQTY.value);
+  const answers = useSelector(state => state.questionnaire.answers);
+
+
   
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
@@ -23,30 +26,6 @@ export function Questionair() {
    // 👇 API URL comes from .env (client/.env)
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
   
-  // fetch two unique random stocks
-  const fetchTwoStocks = async () => {
-    try {
-      let data1, data2;
-
-      do {
-        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data1 || !data1.ticker || data1.ticker === "Symbol");
-
-
-      do {
-        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
-
-      
-      console.log("Fetched stock1:", data1);
-      console.log("Fetched stock2:", data2);
-      
-      setStock1(data1);
-      setStock2(data2);
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
 
   async function fetchStockInfo(ticker) {
   const res = await fetch(`${API_URL}/get-stock-info?ticker=${ticker}`);
@@ -75,7 +54,8 @@ useEffect(() => {
     try {
       const response = await axios.post(`${API_URL}/init`, {
         portfolioName: portfolioName,
-        questionQTY: questionQTY
+        questionQTY: questionQTY,
+        answers: answers,
     },
     {
       withCredentials: true
