@@ -14,6 +14,7 @@ import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
+import stockUpdate
 
 # Load    environment variables from .env file
 load_dotenv()
