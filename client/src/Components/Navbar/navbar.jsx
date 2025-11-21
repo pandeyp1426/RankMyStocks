@@ -90,6 +90,7 @@ const userID = useSelector((state) => state.auth.userID);
 
   const navLinks = [
     { name: "Home", path: "/", type: "nav" },
+    { name: "News", path: "/news", type: "nav" },
     { name: "My Portfolios", path: "/myPortfolios", type: "nav" },
     { name: "Portfolio Rankings", path: "/portfolioRankings", type: "nav" },
   ];

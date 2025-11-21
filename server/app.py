@@ -31,6 +31,9 @@ app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 
+NEWS_CACHE_TTL = 55  # seconds
+market_news_cache = {"ts": 0.0, "articles": [], "as_of": None, "error": None}
+
 from stocks import random_stock, get_stock_price, get_company_name
 from stocks import get_description
 from stocks import search_stocks
@@ -1038,6 +1041,152 @@ def daily_digest():
             "ticker": ticker,
             "summary": summary_text or "Unable to generate digest at this time.",
             "sources": sources_payload,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _parse_news_timestamp(ts):
+    if not ts:
+        return None
+    ts = ts.strip()
+    try:
+        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        pass
+    clean_ts = ts.replace("Z", "")
+    for fmt, length in (("%Y%m%dT%H%M%S", 15), ("%Y%m%dT%H%M", 13)):
+        try:
+            dt = datetime.strptime(clean_ts[:length], fmt)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
+
+
+def fetch_market_news():
+    now = time.time()
+    if market_news_cache["articles"] and (now - market_news_cache["ts"]) < NEWS_CACHE_TTL:
+        return market_news_cache["articles"], market_news_cache.get("error")
+
+    articles = []
+    seen_titles = set()
+    error = None
+
+    def add_article(title, url_, source=None, summary=None, published_at=None, tickers=None):
+        if not title:
+            return
+        normalized_title = title.strip()
+        if not normalized_title:
+            return
+        key = normalized_title.lower()
+        if key in seen_titles:
+            return
+        published_dt = _parse_news_timestamp(published_at)
+        payload = {
+            "title": normalized_title,
+            "url": url_,
+            "source": source or "Unknown",
+            "summary": summary.strip() if isinstance(summary, str) else summary,
+            "publishedAt": published_dt.isoformat() if published_dt else None,
+        }
+        if tickers:
+            payload["tickers"] = tickers
+        articles.append(payload)
+        seen_titles.add(key)
+
+    marketaux_key = os.getenv("MARKETAUX_KEY")
+    if marketaux_key:
+        try:
+            url = (
+                "https://api.marketaux.com/v1/news/all?"
+                f"countries=us&language=en&filter_entities=true&limit=30&api_token={marketaux_key}"
+            )
+            resp = requests.get(url, timeout=10)
+            data = resp.json()
+            for item in data.get("data") or []:
+                tickers = []
+                for ent in item.get("entities") or []:
+                    sym = ent.get("symbol")
+                    if sym:
+                        tickers.append(str(sym).upper())
+                if isinstance(item.get("symbols"), list):
+                    tickers.extend([str(sym).upper() for sym in item["symbols"] if sym])
+                add_article(
+                    title=item.get("title"),
+                    url_=item.get("url"),
+                    source=item.get("source"),
+                    summary=item.get("description") or item.get("snippet"),
+                    published_at=item.get("published_at"),
+                    tickers=list(dict.fromkeys(tickers)) or None,
+                )
+        except Exception:
+            error = "Unable to reach Marketaux news feed."
+
+    alpha_key = (
+        os.getenv("ALPHAVANTAGE_KEY")
+        or os.getenv("ALPHA_VANTAGE_KEY")
+        or os.getenv("ALPHAVANTAGE_API_KEY")
+        or os.getenv("ALPHA_VANTAGE_API_KEY")
+        or os.getenv("ALPHAVANTAGE_NEWS_KEY")
+        or getattr(stocks, "API_KEY", None)
+    )
+    if alpha_key:
+        try:
+            alpha_url = (
+                "https://www.alphavantage.co/query?"
+                f"function=NEWS_SENTIMENT&topics=financial_markets&sort=LATEST&limit=50&apikey={alpha_key}"
+            )
+            alpha_resp = requests.get(alpha_url, timeout=10)
+            alpha_json = alpha_resp.json()
+            for item in alpha_json.get("feed") or []:
+                tickers = []
+                for t in item.get("ticker_sentiment") or []:
+                    sym = t.get("ticker")
+                    if sym:
+                        tickers.append(str(sym).upper())
+                add_article(
+                    title=item.get("title"),
+                    url_=item.get("url"),
+                    source=item.get("source"),
+                    summary=item.get("summary"),
+                    published_at=item.get("time_published"),
+                    tickers=tickers or None,
+                )
+        except Exception:
+            error = "Unable to reach Alpha Vantage news feed."
+    else:
+        error = "No news API key configured. Set MARKETAUX_KEY or ALPHAVANTAGE_KEY."
+
+    if not articles and market_news_cache["articles"]:
+        return market_news_cache["articles"], market_news_cache.get("error")
+
+    articles.sort(
+        key=lambda h: _parse_news_timestamp(h["publishedAt"]) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    if articles:
+        market_news_cache["articles"] = articles
+        market_news_cache["ts"] = now
+        market_news_cache["as_of"] = datetime.now(timezone.utc).isoformat()
+        market_news_cache["error"] = None
+    else:
+        market_news_cache["articles"] = []
+        market_news_cache["ts"] = now
+        market_news_cache["as_of"] = datetime.now(timezone.utc).isoformat()
+        market_news_cache["error"] = error
+    return market_news_cache["articles"], market_news_cache.get("error")
+
+
+@app.route("/api/market-news", methods=["GET"])
+def market_news():
+    try:
+        articles, error = fetch_market_news()
+        return jsonify({
+            "articles": articles,
+            "asOf": market_news_cache.get("as_of"),
+            "count": len(articles),
+            "error": error,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
