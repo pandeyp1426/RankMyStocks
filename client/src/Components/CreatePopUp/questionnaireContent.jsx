@@ -160,19 +160,19 @@ export function QuestionnaireContent({ onComplete }) {
             >
                 <option value="">-- Select an option --</option>
                 <option value="any">Any - No Preference</option>
-                <option value="basic-materials">Basic Materials</option>
-                <option value="major-chemicals">Major Chemicals</option>
-                <option value="consumer-discretionary">Consumer Discretionary</option>
-                <option value="consumer-staples">Consumer Staples</option>
-                <option value="energy">Energy</option>
-                <option value="finance">Finance</option>
-                <option value="health-care">Health Care</option>
-                <option value="industrials">Industrials</option>
-                <option value="miscellaneous">Miscellaneous</option>
-                <option value="real-estate">Real Estate</option>
-                <option value="technology">Technology</option>
-                <option value="telecommunications">Telecommunications</option>
-                <option value="utilities">Utilities</option>
+                <option value="Basic Materials">Basic Materials</option>
+                <option value="Major Chemicals">Major Chemicals</option>
+                <option value="Consumer Discretionary">Consumer Discretionary</option>
+                <option value="Consumer Staples">Consumer Staples</option>
+                <option value="Energy">Energy</option>
+                <option value="Finance">Finance</option>
+                <option value="Health Care">Health Care</option>
+                <option value="Industrials">Industrials</option>
+                <option value="Miscellaneous">Miscellaneous</option>
+                <option value="Real Estate">Real Estate</option>
+                <option value="Technology">Technology</option>
+                <option value="Telecommunications">Telecommunications</option>
+                <option value="Utilities">Utilities</option>
             </select>
             </div>
         </div>
