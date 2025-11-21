@@ -22,7 +22,14 @@ const formatTimestamp = (isoString) => {
     if (!isoString) return "Time n/a"
     const date = new Date(isoString)
     if (Number.isNaN(date.getTime())) return "Time n/a"
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    return date.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+    })
 }
 
 export function News() {
@@ -58,6 +65,15 @@ export function News() {
         const intervalId = setInterval(loadNews, 60000)
         return () => clearInterval(intervalId)
     }, [loadNews])
+
+    const localTz = useMemo(() => {
+        try {
+            const parts = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date())
+            return parts.find((p) => p.type === "timeZoneName")?.value || "local time"
+        } catch {
+            return "local time"
+        }
+    }, [])
 
     const content = useMemo(() => {
         if (loading) {
@@ -131,6 +147,7 @@ export function News() {
                     {lastUpdated && (
                         <span className="subtext">Last updated {formatRelative(lastUpdated)}</span>
                     )}
+                    <span className="subtext">Times shown in {localTz}</span>
                     <button className="news-refresh" onClick={loadNews} disabled={refreshing}>
                         {refreshing ? "Refreshing…" : "Refresh now"}
                     </button>
