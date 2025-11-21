@@ -5,6 +5,7 @@
   max-width: 1280px;
   margin: 0 auto;
   text-align: center;
+  color: var(--body-color, #f5f5ff);
 
   /* Removed padding that caused layout shifting */
   /* padding: 2rem; */
@@ -19,6 +20,18 @@
   --dartmouth-green: #2d6a4fff;
   --brunswick-green: #1b4332ff;
   --dark-green: #081c15ff;
+}
+
+.layout-shell {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.layout-shell__content {
+  position: relative;
+  z-index: 1;
+  backdrop-filter: none;
 }
 
 /* -----------------------------
@@ -73,9 +86,21 @@
 ------------------------------ */
 body {
   margin: 0;
-  background-color: #1a1a1a;
   font-family: "Inter", Arial, sans-serif;
   overflow-x: hidden;
+  background-color: var(--body-bg, #050714);
+  color: var(--body-color, #f5f5ff);
+  transition: background-color 0.45s ease, color 0.3s ease;
+}
+
+body.theme-dark {
+  --body-bg: #050714;
+  --body-color: #f7f6ff;
+}
+
+body.theme-light {
+  --body-bg: #f7f8ff;
+  --body-color: #0b1534;
 }
 
 /* Make scroll smooth across all pages */

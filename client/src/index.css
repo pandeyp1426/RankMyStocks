@@ -4,9 +4,8 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--body-color, #f5f5ff);
+  background-color: var(--body-bg, #050714);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,7 +16,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #242424;
+  background: var(--body-bg, #050714);
+  color: var(--body-color, #f5f5ff);
+  transition: background-color 0.45s ease, color 0.3s ease;
 }
 
 
