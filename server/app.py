@@ -1051,7 +1051,10 @@ def _parse_news_timestamp(ts):
         return None
     ts = ts.strip()
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     except ValueError:
         pass
     clean_ts = ts.replace("Z", "")
