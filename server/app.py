@@ -173,7 +173,7 @@ def random_stock_api():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+    
 # ---- Get Stock Data API ----
 @app.route("/api/get-stock-data", methods=["GET"])
 def get_stock_data():

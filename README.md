@@ -59,77 +59,92 @@ Click the link to local host
 File Path & Description
 
 C:.
-|   .gitignore
-|   package-lock.json
-|   README.md
-|   
-+---client
-|   |   .env
-|   |   .gitignore
-|   |   eslint.config.js
-|   |   index.html            
-|   |   package-lock.json
-|   |   package.json
-|   |   README.md
-|   |   vite.config.js
-|   |   
-|   +---public
-|   |       logo.png
-|   |       vite.svg
-|   |       
-|   \---src
-|       |   App.css                                                         
-|       |   App.jsx                                                         #Creates initial paths to pages
-|       |   index.css
-|       |   layout.jsx                                                      #Hosts navbar utilities
-|       |   main.jsx                                                        #Initial calls to functions & imports used throughout the project
-|       |   store.jsx                                                       #Stores usestates for components like portfolioname & numslider
-|       |   
-|       +---assets
-|       |   |   layout.css
-|       |   |   
-|       |   \---img
-|       |           logo.png
-|       |           react.svg
-|       |       
-|       +---Components
-|       |   +---CreatePopUp
-|       |   |       nameCheck.css
-|       |   |       nameCheck.jsx
-|       |   |       numSlider.css                                   
-|       |   |       numSlider.jsx                                           #Changes the usestate of numSlider which passes through numSliderSlicer and gets saved in store.jsx
-|       |   |       numSliderSlicer.jsx
-|       |   |       popup.css
-|       |   |       popup.jsx                                               #Backbone for our popup, holds the state of the popup & close button
-|       |   |       portfolioName.css
-|       |   |       portfolioName.jsx                                       #Changes the usestate of portfolioName which passes through portfolioNameSlicer and gets saved in store.jsx
-|       |   |       portfolioNameSlicer.jsx
-|       |   |       questionQueue.jsx
-|       |   |       
-|       |   \---Navbar
-|       |           authSlicer.jsx
-|       |           navbar.css
-|       |           navbar.jsx                                              #Creates the links to our different pages
-|       |           
-|       \---Pages
-|           +---Home
-|           |       home.css
-|           |       home.jsx                                                #Welcome message & create portfolio button functionality
-|           |       questionair.css
-|           |       questionair.jsx                                         #Queue functionality for displaying stocks & getting a stock description I think??
-|           |       
-|           +---MyPortfolio
-|           |       myPortfolios.css
-|           |       myPortfolios.jsx                                        #Holds user portfolios....... what the heck is a python
-|           |       
-|           \---Rankings
-|                   portfolioRankings.jsx                                   #Just a header for now
-|                   
-\---server
-        .env
+│   .gitignore
+│   package-lock.json
+│   package.json
+│   README.md
+│
+├───client
+│   │   .gitignore
+│   │   eslint.config.js
+│   │   index.html
+│   │   package-lock.json
+│   │   package.json
+│   │   README.md
+│   │   vite.config.js
+│   │
+│   ├───public
+│   │       logo.png
+│   │
+│   └───src
+│       │   App.css
+│       │   App.jsx                           # Creates initial paths to pages
+│       │   index.css
+│       │   layout.jsx                        # Hosts navbar utilities
+│       │   main.jsx                          # Initial calls to global functions & imports
+│       │   store.jsx                         # Stores shared states for components like portfolioName & numSlider
+│       │
+│       ├───assets
+│       │   │   layout.css
+│       │   │
+│       │   └───img
+│       │           delete.png
+│       │           logo.png
+│       │
+│       ├───Components
+│       │   ├───CreatePopUp
+│       │   │       createPortfolioPopup.css
+│       │   │       nameCheck.css
+│       │   │       nameCheck.jsx
+│       │   │       numSlider.css
+│       │   │       numSlider.jsx             # Changes the numSlider state → passed to numSliderSlicer → stored in store.jsx
+│       │   │       numSliderSlicer.jsx
+│       │   │       popup.css
+│       │   │       popup.jsx                 # Backbone for popup; manages open/close logic
+│       │   │       portfolioName.css
+│       │   │       portfolioName.jsx         # Changes portfolioName state → passed to portfolioNameSlicer → stored in store.jsx
+│       │   │       portfolioNameSlicer.jsx
+│       │   │       questionQueue.jsx
+│       │   │
+│       │   ├───Footer
+│       │   │       footer.css
+│       │   │       footer.jsx
+│       │   │
+│       │   ├───MarketBackground
+│       │   │       AnimatedBackground.css
+│       │   │       AnimatedBackground.jsx
+│       │   │
+│       │   ├───Navbar
+│       │   │       authSlicer.jsx
+│       │   │       navbar.css
+│       │   │       navbar.jsx                # Creates navigation links between pages
+│       │   │
+│       │   ├───PortfolioChart
+│       │   │       portfolioChart.css
+│       │   │       portfolioChart.jsx
+│       │   │
+│       │   └───StockSearch
+│       │           stockSearch.css
+│       │           stockSearch.jsx
+│       │
+│       └───Pages
+│           ├───Home
+│           │       home.css
+│           │       home.jsx                  # Welcome message & create-portfolio button logic
+│           │       questionair.css
+│           │       questionair.jsx           # Queue functionality for displaying stocks & descriptions
+│           │
+│           ├───MyPortfolio
+│           │       myPortfolios.css
+│           │       myPortfolios.jsx          # Holds user portfolios... what the heck is a python
+│           │
+│           └───Rankings
+│                   portfolioRankings.css
+│                   portfolioRankings.jsx      # Just a header for now
+│
+└───server
         app.py
-        Langchainintegration.py
         requirements.txt
         stocks.py
+        stockUpdate.py
         ticker_list.csv
-
