@@ -147,6 +147,7 @@ def compute_portfolio_snapshot_values(cursor, portfolio_id):
 #  Routes
 @app.route("/")
 def home():
+    stockUpdate.update_stock_data()
     return "Welcome to RankMyStocks API!"
 
 
