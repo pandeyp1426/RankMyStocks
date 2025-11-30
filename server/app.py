@@ -14,6 +14,7 @@ import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
+import stockUpdate
 
 # Load    environment variables from .env file
 load_dotenv()
@@ -145,6 +146,7 @@ def compute_portfolio_snapshot_values(cursor, portfolio_id):
 #  Routes
 @app.route("/")
 def home():
+    stockUpdate.update_stock_data()
     return "Welcome to RankMyStocks API!"
 
 
