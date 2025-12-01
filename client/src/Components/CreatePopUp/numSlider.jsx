@@ -14,7 +14,7 @@ export function NumSlider() {
 
   return (
     <div>
-      <h3 className="title">How many Stocks?</h3>
+      <h3 className="title">How many Rounds?</h3>
 
       <input
         type="range"
