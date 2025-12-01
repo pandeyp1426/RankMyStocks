@@ -15,6 +15,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
 import stockUpdate
+import pandas as pd
 
 # Load    environment variables from .env file
 load_dotenv()
@@ -235,6 +236,30 @@ def get_stock_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#creates list of stocks based on useres preferences
+def filter_list(answers, questionQTY):
+    #first filter by industry
+    industry = answers.get("industrySector", "any")
+    
+    #data frame = all stocks from csv
+    df = pd.read_csv("ticker_list.csv", names=['ticker', 'name', 'country', 'sectors', 'industry'])
+    
+    #if industry is any return full df otherwise return filtered df
+    #filter by industry
+    if(industry != "any"):
+        #filter by industry sector
+        print("Filtered DF by industry:", industry)
+        #filters by industry sector
+        df = df[df.iloc[:, 3].str.lower() == industry.lower()]
+        print("Filtered DF:", df)
+        filtered_stocks = df['ticker'].tolist()
+        print("Filtered Stocks List:", filtered_stocks)
+        
+    #only filtered by industry for now
+    random_filtered_tickers = random.sample(filtered_stocks, questionQTY * 2)
+    
+    return random_filtered_tickers
+    
 # ---- Initialize Session ----
 
 @app.route("/init", methods=["POST"])
@@ -248,8 +273,14 @@ def initialize():
     data = request.get_json()
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
-    stock_list = stocks.generate_ticker_list(questionQTY * 2)
+    answers = data.get("answers")
+    
+    filtered_stocks = filter_list(answers, questionQTY)
+    
+    stock_list = filtered_stocks
     portfolio = []
+
+    print("Answers received in init:", answers)
     
     
     #set session variables 
@@ -262,7 +293,8 @@ def initialize():
         "status": "initialized", 
         "questionQTY": questionQTY, 
         "portfolioName": portolfioName,
-        "stock_list": stock_list
+        "answers": filtered_stocks,
+        "stock_list": stock_list,
     })
 
     return response

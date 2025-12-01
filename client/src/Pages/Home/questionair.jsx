@@ -14,6 +14,9 @@ export function Questionair() {
   const questionQTY = useSelector((state) => state.questionQTY.value);
   const activeUserId = useSelector((state) => state.auth.userID);
   const { isAuthenticated, user, loginWithRedirect } = useAuth0();
+  const answers = useSelector(state => state.questionnaire.answers);
+
+
   
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
@@ -39,30 +42,6 @@ export function Questionair() {
     return null;
   }
   
-  // fetch two unique random stocks
-  const fetchTwoStocks = async () => {
-    try {
-      let data1, data2;
-
-      do {
-        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data1 || !data1.ticker || data1.ticker === "Symbol");
-
-
-      do {
-        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
-
-      
-      console.log("Fetched stock1:", data1);
-      console.log("Fetched stock2:", data2);
-      
-      setStock1(data1);
-      setStock2(data2);
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
 
   async function fetchStockInfo(ticker) {
     try {
@@ -93,12 +72,13 @@ useEffect(() => {
 }, [stock1?.ticker, stock2?.ticker]);
 
 
-  //function to send questionQTY and portfolio name to backend
+  //function to send questionQTY, portfolio name, and other questionnaire answers to backend
   const sendQuestionQTY = async () => {
     try {
       const response = await axios.post(`${API_URL}/init`, {
         portfolioName: portfolioName,
-        questionQTY: questionQTY
+        questionQTY: questionQTY,
+        answers: answers,
     },
     {
       withCredentials: true
@@ -338,12 +318,12 @@ const sendStockPick = async (stock) => {
 
         {!isComplete && (
         <div className="stock-compare-container">
-          {stock1 && (
-            <div
-              className="stock-card"
-              onClick={() => !isComplete && handlePick(stock1)}
-              role="button"
-              tabIndex={0}
+              {stock1 && (
+                <div
+                  className="stock-card"
+                  onClick={() => !isComplete && handlePick(stock1)}
+                  role="button"
+                  tabIndex={0}
             >
               <button className="info-icon" title={stock1.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock1.ticker}</h3>
@@ -353,23 +333,23 @@ const sendStockPick = async (stock) => {
             </div>
           )}
 
-          <div className="vs-text">VS</div>
+              <div className="vs-text">VS</div>
 
-          {stock2 && (
-            <div
-              className="stock-card"
-              onClick={() => !isComplete && handlePick(stock2)}
-              role="button"
-              tabIndex={0}
-            >
-              <button className="info-icon" title={stock2.description}>ⓘ</button>
-              <h3 className="stock-ticker">{stock2.ticker}</h3>
-              <p className="stock-name">{stock2.name}</p>
-              <p className="stock-price">${Number(stock2.price || 0).toFixed(2)}</p>
-              <p className={`stock-change ${formatChangeClass(stock2)}`}>{formatChange(stock2)}</p>
+              {stock2 && (
+                <div
+                  className="stock-card"
+                  onClick={() => !isComplete && handlePick(stock2)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <button className="info-icon" title={stock2.description}>ⓘ</button>
+                  <h3 className="stock-ticker">{stock2.ticker}</h3>
+                  <p className="stock-name">{stock2.name}</p>
+                  <p className="stock-price">${Number(stock2.price || 0).toFixed(2)}</p>
+                  <p className={`stock-change ${formatChangeClass(stock2)}`}>{formatChange(stock2)}</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
         )}
 
         {isComplete ? (
