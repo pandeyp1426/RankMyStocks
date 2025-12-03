@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import logo from "../../assets/img/logo.png";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -50,6 +50,7 @@ const MoonIcon = () => (
 export function Navbar({ theme = "dark", onToggleTheme }) {
   const { loginWithRedirect, logout, isAuthenticated, user, getAccessTokenSilently } = useAuth0();
   const dispatch = useDispatch();
+  const location = useLocation();
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
 //needs to be looked at more later, will store assuming we get data 
 //but allows user to login regardless of auth0 sending us user id and
@@ -105,47 +106,64 @@ const userID = useSelector((state) => state.auth.userID);
 
   return (
     <nav className="navbar">
-      <div className="navbar-left">
-        <Link to="/" className="navbar-home-link">
-          <img src={logo} alt="RankMyStocks logo" className="navbar-logo" />
-          <h1 className="navbar-title">RankMyStocks</h1>
-        </Link>
-      </div>
-
-      <div className="navbar-right">
-        {navLinks.map((link) => (
-          <Link key={link.name} to={link.path} className="navbar-link">
-            {link.name}
+      <div className="navbar-shell">
+        <div className="navbar-left">
+          <Link to="/" className="navbar-home-link">
+            <div className="navbar-logo-wrap">
+              <img src={logo} alt="RankMyStocks logo" className="navbar-logo" />
+              <span className="navbar-logo-glow" aria-hidden />
+            </div>
+            <div className="navbar-title-wrap">
+              <h1 className="navbar-title">RankMyStocks</h1>
+              <p className="navbar-subtitle">Portfolio intelligence in motion</p>
+            </div>
           </Link>
-        ))}
+        </div>
 
-        <div className="navbar-controls">
-          {isAuthenticated ? (
-            <div className="auth-buttons">
-              <button
-                className="logout-btn"
-                onClick={() => logout({ returnTo: window.location.origin })}
-              >
-                Log Out
-              </button>
-            </div>
-          ) : (
-            <div className="auth-buttons">
-              <button className="login-btn" onClick={() => loginWithRedirect()}>
-                Log In/Sign Up
-              </button>
-            </div>
-          )}
+        <div className="navbar-right">
+          <div className="navbar-links">
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.path;
+              return (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className={`navbar-link ${isActive ? "is-active" : ""}`}
+                >
+                  <span>{link.name}</span>
+                </Link>
+              );
+            })}
+          </div>
 
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={handleThemeToggle}
-            aria-label={modeLabel}
-            title={modeLabel}
-          >
-            {theme === "light" ? <MoonIcon /> : <SunIcon />}
-          </button>
+          <div className="navbar-controls">
+            {isAuthenticated ? (
+              <div className="auth-buttons">
+                <button
+                  className="logout-btn"
+                  onClick={() => logout({ returnTo: window.location.origin })}
+                >
+                  Log Out
+                </button>
+              </div>
+            ) : (
+              <div className="auth-buttons">
+                <button className="login-btn" onClick={() => loginWithRedirect()}>
+                  Log In/Sign Up
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={handleThemeToggle}
+              aria-label={modeLabel}
+              title={modeLabel}
+            >
+              {theme === "light" ? <MoonIcon /> : <SunIcon />}
+            </button>
+          </div>
         </div>
       </div>
     </nav>

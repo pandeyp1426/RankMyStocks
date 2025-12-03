@@ -1069,6 +1069,13 @@ def _parse_news_timestamp(ts):
 
 def fetch_market_news(force=False):
     now = time.time()
+    if force:
+        # Clear cache metadata so a manual refresh truly pulls fresh articles
+        market_news_cache["ts"] = 0.0
+        market_news_cache["articles"] = []
+        market_news_cache["as_of"] = None
+        market_news_cache["error"] = None
+
     if not force and market_news_cache["articles"] and (now - market_news_cache["ts"]) < NEWS_CACHE_TTL:
         return market_news_cache["articles"], market_news_cache.get("error"), True
 
@@ -1236,7 +1243,9 @@ def fetch_market_news(force=False):
         error = "No news API key configured. Set MARKETAUX_KEY or ALPHAVANTAGE_KEY."
 
     if not articles and market_news_cache["articles"]:
-        return market_news_cache["articles"], market_news_cache.get("error")
+        return market_news_cache["articles"], market_news_cache.get("error"), True
+    if not articles:
+        return [], error or "No news articles available.", False
 
     articles.sort(
         key=lambda h: _parse_news_timestamp(h["publishedAt"]) or datetime.min.replace(tzinfo=timezone.utc),
