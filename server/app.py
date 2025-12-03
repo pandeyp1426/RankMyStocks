@@ -13,7 +13,7 @@ import urllib.parse
 import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-import stocks
+from server.stocks import stocks
 import stockUpdate
 
 # Load    environment variables from .env file
@@ -33,10 +33,10 @@ app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 
-from stocks import random_stock, get_stock_price, get_company_name
-from stocks import get_description
-from stocks import search_stocks
-from stocks import (
+from server.stocks import random_stock, get_stock_price, get_company_name
+from server.stocks import get_description
+from server.stocks import search_stocks
+from server.stocks import (
     get_global_quote,
     get_avg_volume_60d,
     get_market_cap,
@@ -207,7 +207,7 @@ def get_stock_data():
         )
 
         prompt = ChatPromptTemplate.from_messages([
-         ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 200 characters.")
+        ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 200 characters.")
         ])
 
         chain = prompt | model

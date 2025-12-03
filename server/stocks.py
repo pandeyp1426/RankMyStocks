@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from time import time as _time
 import threading
 from concurrent.futures import ThreadPoolExecutor
-
 import yfinance as yf
 
 
