@@ -1067,16 +1067,49 @@ def _parse_news_timestamp(ts):
     return None
 
 
-def fetch_market_news():
+def fetch_market_news(force=False):
     now = time.time()
-    if market_news_cache["articles"] and (now - market_news_cache["ts"]) < NEWS_CACHE_TTL:
-        return market_news_cache["articles"], market_news_cache.get("error")
+    if not force and market_news_cache["articles"] and (now - market_news_cache["ts"]) < NEWS_CACHE_TTL:
+        return market_news_cache["articles"], market_news_cache.get("error"), True
+
+    def categorize_article(title, summary, tickers=None, sentiment=None):
+        text = " ".join([title or "", summary or ""]).lower()
+        tags = set()
+        earnings_terms = ("earnings", "eps", "results", "q1", "q2", "q3", "q4", "quarter", "guidance", "revenue", "profit", "loss", "forecast")
+        pump_terms = ("rally", "rallies", "surge", "surges", "spike", "spikes", "jump", "jumps", "soar", "soars", "beat", "beats", "beats estimates", "record high", "upgrade")
+        dump_terms = ("tank", "tanks", "plunge", "plunges", "drop", "drops", "sink", "sinks", "selloff", "downgrade", "cut forecast", "miss", "delist", "delisting")
+        guidance_terms = ("outlook", "guidance", "forecast", "update", "preview")
+        legal_terms = ("lawsuit", "investigation", "sec", "fine", "regulator", "probe", "class action", "settlement")
+        crypto_terms = ("bitcoin", "crypto", "ethereum", "token", "defi", "etf")
+
+        if any(term in text for term in earnings_terms):
+            tags.add("Earnings")
+        if any(term in text for term in guidance_terms):
+            tags.add("Performance/Guidance")
+        if any(term in text for term in pump_terms):
+            tags.add("Bullish Move")
+        if any(term in text for term in dump_terms):
+            tags.add("Bearish Move")
+        if any(term in text for term in legal_terms):
+            tags.add("Legal/Regulatory")
+        if any(term in text for term in crypto_terms):
+            tags.add("Crypto")
+        if tickers and len(tickers) >= 2:
+            tags.add("Multi-Ticker/Peers")
+
+        sentiment_norm = (sentiment or "").lower()
+        if sentiment_norm in ("positive", "bullish"):
+            tags.add("Bullish Move")
+        if sentiment_norm in ("negative", "bearish"):
+            tags.add("Bearish Move")
+
+        return sorted(tags)
 
     articles = []
     seen_titles = set()
     error = None
 
-    def add_article(title, url_, source=None, summary=None, published_at=None, tickers=None):
+    def add_article(title, url_, source=None, summary=None, published_at=None, tickers=None, sentiment=None):
         if not title:
             return
         normalized_title = title.strip()
@@ -1095,6 +1128,7 @@ def fetch_market_news():
         }
         if tickers:
             payload["tickers"] = tickers
+        payload["categories"] = categorize_article(normalized_title, summary, tickers, sentiment)
         articles.append(payload)
         seen_titles.add(key)
 
@@ -1155,9 +1189,49 @@ def fetch_market_news():
                     summary=item.get("summary"),
                     published_at=item.get("time_published"),
                     tickers=tickers or None,
+                    sentiment=item.get("overall_sentiment_label"),
                 )
         except Exception:
-            error = "Unable to reach Alpha Vantage news feed."
+            error = error or "Unable to reach Alpha Vantage news feed."
+    # Finnhub general market news (optional)
+    finnhub_key = os.getenv("FINNHUB_KEY")
+    if finnhub_key:
+        try:
+            finn_url = f"https://finnhub.io/api/v1/news?category=general&token={finnhub_key}"
+            resp = requests.get(finn_url, timeout=10)
+            data = resp.json()
+            for item in data or []:
+                add_article(
+                    title=item.get("headline"),
+                    url_=item.get("url"),
+                    source=item.get("source"),
+                    summary=item.get("summary"),
+                    published_at=item.get("datetime"),
+                    tickers=None,
+                    sentiment=item.get("sentiment"),
+                )
+        except Exception:
+            error = error or "Unable to reach Finnhub news feed."
+    # Financial Modeling Prep (optional)
+    fmp_key = os.getenv("FMP_API_KEY") or os.getenv("FINANCIAL_MODEL_PREP_KEY")
+    if fmp_key:
+        try:
+            fmp_url = f"https://financialmodelingprep.com/api/v3/stock_news?limit=50&apikey={fmp_key}"
+            resp = requests.get(fmp_url, timeout=10)
+            data = resp.json()
+            for item in data or []:
+                tickers = item.get("tickers") or []
+                add_article(
+                    title=item.get("title"),
+                    url_=item.get("url"),
+                    source=item.get("site"),
+                    summary=item.get("text"),
+                    published_at=item.get("publishedDate"),
+                    tickers=[str(t).upper() for t in tickers] if tickers else None,
+                    sentiment=None,
+                )
+        except Exception:
+            error = error or "Unable to reach Financial Modeling Prep news feed."
     else:
         error = "No news API key configured. Set MARKETAUX_KEY or ALPHAVANTAGE_KEY."
 
@@ -1168,28 +1242,50 @@ def fetch_market_news():
         key=lambda h: _parse_news_timestamp(h["publishedAt"]) or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )
-    if articles:
-        market_news_cache["articles"] = articles
-        market_news_cache["ts"] = now
-        market_news_cache["as_of"] = datetime.now(timezone.utc).isoformat()
-        market_news_cache["error"] = None
-    else:
-        market_news_cache["articles"] = []
-        market_news_cache["ts"] = now
-        market_news_cache["as_of"] = datetime.now(timezone.utc).isoformat()
-        market_news_cache["error"] = error
-    return market_news_cache["articles"], market_news_cache.get("error")
+    # Windowing: recent 24h (1 day) plus highlights from last quarter
+    now_dt = datetime.now(timezone.utc)
+    recent_cutoff = now_dt - timedelta(hours=24)
+    quarter_cutoff = now_dt - timedelta(days=90)
+
+    recent_items = []
+    quarter_highlights = []
+    for art in articles:
+        dt = _parse_news_timestamp(art.get("publishedAt"))
+        if dt is None:
+            recent_items.append(art)
+            continue
+        if dt >= recent_cutoff:
+            recent_items.append(art)
+        elif dt >= quarter_cutoff:
+            tagged = dict(art)
+            cats = set(tagged.get("categories") or [])
+            cats.add("Last Quarter Highlight")
+            tagged["categories"] = sorted(cats)
+            quarter_highlights.append(tagged)
+
+    recent_items.sort(key=lambda h: _parse_news_timestamp(h.get("publishedAt")) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    quarter_highlights.sort(key=lambda h: _parse_news_timestamp(h.get("publishedAt")) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    final_articles = recent_items + quarter_highlights[:20]
+
+    market_news_cache["articles"] = final_articles
+    market_news_cache["ts"] = now
+    market_news_cache["as_of"] = now_dt.isoformat()
+    market_news_cache["error"] = None if final_articles else error
+
+    return market_news_cache["articles"], market_news_cache.get("error"), False
 
 
 @app.route("/api/market-news", methods=["GET"])
 def market_news():
     try:
-        articles, error = fetch_market_news()
+        force = request.args.get("force") in ("1", "true", "yes", "y", "on")
+        articles, error, from_cache = fetch_market_news(force=force)
         return jsonify({
             "articles": articles,
             "asOf": market_news_cache.get("as_of"),
             "count": len(articles),
             "error": error,
+            "fromCache": from_cache,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
