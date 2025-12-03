@@ -6,8 +6,9 @@ import App from './App.jsx';
 import store from './store.jsx';
 import './index.css';
 
-const domain = import.meta.env.VITE_AUTH0_DOMAIN;
-const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+// will typically be undefined in Vite, but this fallback adds clarity.
+const domain = import.meta.env.VITE_AUTH0_DOMAIN ?? import.meta.env.REACT_APP_AUTH0_DOMAIN;
+const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID ?? import.meta.env.REACT_APP_AUTH0_CLIENT_ID;
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
