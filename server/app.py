@@ -13,7 +13,7 @@ import urllib.parse
 import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from server.stocks import stocks
+import stocks
 import stockUpdate
 
 # Load    environment variables from .env file
@@ -21,7 +21,6 @@ load_dotenv()
 
 OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"
 app = Flask(__name__)
-#app.register_blueprint(handleUser)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 
 #required for cross origin session cookies
@@ -33,10 +32,10 @@ app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 
-from server.stocks import random_stock, get_stock_price, get_company_name
-from server.stocks import get_description
-from server.stocks import search_stocks
-from server.stocks import (
+from stocks import random_stock, get_stock_price, get_company_name
+from stocks import get_description
+from stocks import search_stocks
+from stocks import (
     get_global_quote,
     get_avg_volume_60d,
     get_market_cap,
@@ -147,7 +146,7 @@ def compute_portfolio_snapshot_values(cursor, portfolio_id):
 #  Routes
 @app.route("/")
 def home():
-    stockUpdate.update_stock_data()
+    stockUpdate.update_fundamentals_batch()
     return "Welcome to RankMyStocks API!"
 
 
@@ -207,7 +206,7 @@ def get_stock_data():
         )
 
         prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 200 characters.")
+         ("system", "You are a helpful financial assistant that provides concise and accurate stock information. Provide recent events about {stock} in about 200 characters.")
         ])
 
         chain = prompt | model
@@ -238,7 +237,7 @@ def get_stock_data():
 
 # ---- Initialize Session ----
 
-@app.route("/", methods=["POST"])
+@app.route("/init", methods=["POST"])
 def initialize():
     print("=" * 50)
     print("INIT ROUTE CALLED")
@@ -337,7 +336,7 @@ def pick_stock():
     
     #this function recives the users picked stock from the frontend and stores it in the portfolio list
     data = request.get_json()
-    stock_pick = data.get("stockPick")  
+    stock_pick = data.get("stockPick")
     
     portoflio = session.get("portfolio", "No portfolio avalible")
     portoflio.append(stock_pick)
@@ -1070,7 +1069,6 @@ def delete_portfolio(portfolio_id):
         cursor.close()
         conn.close()
 
-#User handling
 @app.route("/api/user_ID", methods=["POST"])
 def get_user_ID():
     data = request.get_json()
@@ -1085,6 +1083,8 @@ def get_user_ID():
         "status": "initialized",
         "user_ID": user_id
     })
+    
+    return response
 
 # ---- Entrypoint ----
 if __name__ == "__main__":
