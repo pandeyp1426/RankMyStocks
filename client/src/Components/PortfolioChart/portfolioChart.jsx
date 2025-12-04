@@ -10,7 +10,7 @@ export function PortfolioChart({
 }) {
   const svgRef = useRef(null);
   const [hover, setHover] = useState(null);
-  const [chartType, setChartType] = useState("candle"); // "candle" or "line"
+  const [chartType, setChartType] = useState("line"); // "candle" or "line"
   const isLight = typeof document !== "undefined" && document.body.classList.contains("theme-light");
   const gridColor = isLight ? "#d7deff" : "rgba(255, 255, 255, 0.08)";
   const axisColor = isLight ? "#cbd5e1" : "rgba(255, 255, 255, 0.16)";
@@ -49,8 +49,28 @@ export function PortfolioChart({
   const yMin = Math.min(...yVals) * 0.98;
   const yMax = Math.max(...yVals) * 1.02;
 
-  const xMin = parsed[0].x;
-  const xMax = parsed[parsed.length - 1].x;
+  const rawMin = parsed[0].x;
+  const rawMax = parsed[parsed.length - 1].x;
+  const isIntradayRange = (rawMax - rawMin) < 36 * 60 * 60 * 1000;
+
+  const domainMin = useMemo(() => {
+    if (!parsed.length) return rawMin;
+    if (!isIntradayRange) return rawMin;
+    const start = new Date(rawMax);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }, [parsed, rawMin, rawMax, isIntradayRange]);
+
+  const domainMax = useMemo(() => {
+    if (!parsed.length) return rawMax;
+    if (!isIntradayRange) return rawMax;
+    const now = new Date();
+    return now > rawMax ? now : rawMax;
+  }, [parsed, rawMax, isIntradayRange]);
+
+  const xMin = domainMin;
+  const xMax = domainMax;
+  const xSpanMs = xMax - xMin;
 
   // Improved x-scale with proper spacing from edges
   const xScale = (x, index) => {
@@ -234,9 +254,11 @@ export function PortfolioChart({
             const labelInterval = Math.max(Math.ceil(parsed.length / 8), 1);
             if (i % labelInterval !== 0 && i !== parsed.length - 1) return null;
             const x = xScale(d.x, i);
-            const isIntraday = (d.x instanceof Date ? (Date.now() - d.x.getTime()) : 0) < 36 * 60 * 60 * 1000;
-            const label = isIntraday
+            const isLongRange = xSpanMs > 90 * 24 * 60 * 60 * 1000; // > ~3 months
+            const label = isIntradayRange
               ? d.x.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+              : isLongRange
+              ? d.x.toLocaleDateString("en-US", { month: "short" })
               : d.x.toLocaleDateString("en-US", { month: "short", day: "numeric" });
             return (
               <text 

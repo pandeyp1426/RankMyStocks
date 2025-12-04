@@ -14,6 +14,8 @@ import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
+import yfinance as yf
+import pandas as pd
 
 # Load    environment variables from .env file
 load_dotenv()
@@ -33,6 +35,8 @@ CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
 
 NEWS_CACHE_TTL = 55  # seconds
 market_news_cache = {"ts": 0.0, "articles": [], "as_of": None, "error": None}
+CHART_CACHE_TTL = 15 * 60  # seconds (15 minutes)
+chart_cache = {}
 
 from stocks import random_stock, get_stock_price, get_company_name
 from stocks import get_description
@@ -145,6 +149,100 @@ def compute_portfolio_snapshot_values(cursor, portfolio_id):
     change_pct = ((current - invested) / invested * 100) if invested > 0 else None
     return invested, current, change_pct
 
+
+def get_user_portfolio_tickers(user_id):
+    """
+    Return a dict of ticker -> count for all holdings belonging to the user.
+    Uses a single join query for efficiency.
+    """
+    user_id = normalize_user_identifier(user_id)
+    if user_id is None:
+        return {}
+    conn = None
+    cursor = None
+    tickers = {}
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT ps.ticker
+            FROM portfolios p
+            JOIN portfolio_stocks ps ON ps.portfolio_id = p.id
+            WHERE p.user_id = %s
+            """,
+            (user_id,),
+        )
+        for (ticker,) in cursor.fetchall():
+            t = (ticker or "").strip().upper()
+            if not t:
+                continue
+            tickers[t] = tickers.get(t, 0) + 1
+        return tickers
+    except Exception as exc:
+        print("Error reading user portfolios:", exc)
+        return {}
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def aggregate_yahoo_bars(df, ticker_counts):
+    """
+    Aggregate multi-ticker bars into a single series weighted by occurrence count.
+    """
+    if df is None or df.empty:
+        return []
+
+    # Drop tickers that are entirely missing to avoid noisy "failed download" cases
+    present = set()
+    if isinstance(df.columns, pd.MultiIndex):
+        present = set(df.columns.get_level_values(0))
+    else:
+        # single ticker case
+        present = set(ticker_counts.keys())
+
+    filtered_counts = {t: w for t, w in ticker_counts.items() if t in present and w > 0}
+    if not filtered_counts:
+        return []
+
+    agg = None
+    for ticker, weight in ticker_counts.items():
+        if ticker not in filtered_counts or weight <= 0:
+            continue
+        try:
+            if isinstance(df.columns, pd.MultiIndex):
+                if ticker not in df.columns.get_level_values(0):
+                    continue
+                sub = df[ticker][["Open", "High", "Low", "Close"]] * weight
+            else:
+                # Single ticker download
+                sub = df[["Open", "High", "Low", "Close"]] * weight
+            agg = sub if agg is None else agg.add(sub, fill_value=0)
+        except Exception as exc:
+            print(f"Error aggregating {ticker}:", exc)
+            continue
+
+    if agg is None or agg.empty:
+        return []
+
+    agg = agg.dropna(how="all")
+    series = []
+    for ts, row in agg.iterrows():
+        try:
+            epoch_ms = int(pd.Timestamp(ts).to_pydatetime().timestamp() * 1000)
+            series.append({
+                "x": epoch_ms,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+            })
+        except Exception:
+            continue
+    return series
 #  Routes
 @app.route("/")
 def home():
@@ -1298,6 +1396,88 @@ def market_news():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def fetch_yahoo_portfolio_chart(ticker_counts):
+    tickers = list(ticker_counts.keys())
+    if not tickers:
+        return {"intraday": [], "daily": []}
+    tickers_str = " ".join(tickers)
+    intraday_df = None
+    daily_df = None
+    try:
+        intraday_df = yf.download(
+            tickers_str,
+            period="1d",
+            interval="60m",
+            progress=False,
+            threads=False,
+            group_by="ticker",
+            auto_adjust=False,
+        )
+    except Exception as exc:
+        print("Error fetching intraday from Yahoo:", exc)
+
+    try:
+        daily_df = yf.download(
+            tickers_str,
+            period="1y",
+            interval="1d",
+            progress=False,
+            threads=False,
+            group_by="ticker",
+            auto_adjust=False,
+        )
+    except Exception as exc:
+        print("Error fetching daily from Yahoo:", exc)
+
+    agg_intraday = aggregate_yahoo_bars(intraday_df, ticker_counts)
+    agg_daily = aggregate_yahoo_bars(daily_df, ticker_counts)
+    return {
+        "intraday": agg_intraday,
+        "daily": agg_daily,
+    }
+
+
+@app.route("/api/portfolio-chart", methods=["GET"])
+def portfolio_chart():
+    try:
+        raw_user = request.args.get("userId") or request.args.get("user_id")
+        user_id = normalize_user_identifier(raw_user)
+        if user_id is None:
+            return jsonify({"intraday": [], "daily": [], "error": "invalid user id"}), 400
+
+        ticker_counts = get_user_portfolio_tickers(user_id)
+        if not ticker_counts:
+            return jsonify({"intraday": [], "daily": [], "count": 0})
+
+        cache_key = tuple(sorted(ticker_counts.items()))
+        cached = chart_cache.get(cache_key)
+        now_ts = time.time()
+        if cached and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
+            payload = cached["data"]
+            payload["fromCache"] = True
+            payload["asOf"] = cached.get("asOf")
+            return jsonify(payload)
+
+        data = fetch_yahoo_portfolio_chart(ticker_counts)
+        payload = {
+          "intraday": data.get("intraday") or [],
+          "daily": data.get("daily") or [],
+          "fromCache": False,
+          "asOf": datetime.now(timezone.utc).isoformat(),
+        }
+        chart_cache[cache_key] = {"ts": now_ts, "data": payload, "asOf": payload["asOf"]}
+        return jsonify(payload)
+    except Exception as exc:
+        print("Error in portfolio-chart endpoint:", exc)
+        cached = chart_cache.get(cache_key or ())
+        if cached:
+            payload = cached["data"]
+            payload["fromCache"] = True
+            payload["stale"] = True
+            return jsonify(payload)
+        return jsonify({"intraday": [], "daily": [], "error": "server error"}), 500
 
 # ---- Delete Portfolio ----
 @app.route("/api/delete-portfolio/<int:portfolio_id>", methods=["DELETE"])
