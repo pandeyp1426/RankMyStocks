@@ -11,6 +11,12 @@ export function PortfolioChart({
   const svgRef = useRef(null);
   const [hover, setHover] = useState(null);
   const [chartType, setChartType] = useState("candle"); // "candle" or "line"
+  const isLight = typeof document !== "undefined" && document.body.classList.contains("theme-light");
+  const gridColor = isLight ? "#d7deff" : "rgba(255, 255, 255, 0.08)";
+  const axisColor = isLight ? "#cbd5e1" : "rgba(255, 255, 255, 0.16)";
+  const labelColor = isLight ? "#475569" : "#c7d2fe";
+  const tooltipBg = isLight ? "#ffffff" : "#0f172a";
+  const tooltipText = isLight ? "#0f172a" : "#e5e7eb";
 
   const parsed = useMemo(() => {
     return Array.isArray(candleData)
@@ -110,9 +116,15 @@ export function PortfolioChart({
   const onLeave = () => setHover(null);
 
   return (
-    <div className="portfolio-chart-wrapper" style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div className="portfolio-chart-inner" style={{ position: "relative", width: "100%", height: "450px" }}>
-        <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "100%" }} onMouseMove={onMouseMove} onMouseLeave={onLeave}>
+    <div className="portfolio-chart-shell">
+      <div className="portfolio-chart-inner">
+        <svg
+          ref={svgRef}
+          className="portfolio-chart-svg"
+          viewBox={`0 0 ${width} ${height}`}
+          onMouseMove={onMouseMove}
+          onMouseLeave={onLeave}
+        >
           {/* Grid lines */}
           {[0, 0.25, 0.5, 0.75, 1].map(t => {
             const y = padding.top + innerH - t * innerH;
@@ -123,7 +135,7 @@ export function PortfolioChart({
                 y1={y} 
                 x2={padding.left + innerW} 
                 y2={y} 
-                stroke="#f0f0f0" 
+                stroke={gridColor}
                 strokeWidth="1"
               />
             );
@@ -135,7 +147,7 @@ export function PortfolioChart({
             y1={height - padding.bottom} 
             x2={width - padding.right} 
             y2={height - padding.bottom} 
-            stroke="#ddd" 
+            stroke={axisColor}
             strokeWidth="2"
           />
 
@@ -222,6 +234,10 @@ export function PortfolioChart({
             const labelInterval = Math.max(Math.ceil(parsed.length / 8), 1);
             if (i % labelInterval !== 0 && i !== parsed.length - 1) return null;
             const x = xScale(d.x, i);
+            const isIntraday = (d.x instanceof Date ? (Date.now() - d.x.getTime()) : 0) < 36 * 60 * 60 * 1000;
+            const label = isIntraday
+              ? d.x.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+              : d.x.toLocaleDateString("en-US", { month: "short", day: "numeric" });
             return (
               <text 
                 key={`x-${i}`} 
@@ -229,10 +245,10 @@ export function PortfolioChart({
                 y={height - padding.bottom + 20} 
                 textAnchor="middle" 
                 fontSize="11" 
-                fill="#666"
+                fill={labelColor}
                 fontFamily="sans-serif"
               >
-                {d.x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {label}
               </text>
             );
           })}
@@ -245,7 +261,7 @@ export function PortfolioChart({
                 y1={padding.top} 
                 x2={hover.xPos} 
                 y2={height - padding.bottom} 
-                stroke="#999" 
+                stroke={axisColor}
                 strokeWidth="1"
                 strokeDasharray="4,4" 
               />
@@ -269,100 +285,40 @@ export function PortfolioChart({
           <div 
             className="chart-tooltip" 
             style={{ 
-              position: "absolute", 
               left: Math.min(hover.xPos + 15, width - 150), 
-              top: 10, 
-              background: "rgba(255, 255, 255, 0.95)", 
-              border: "1px solid #ccc", 
-              borderRadius: 8, 
-              padding: "8px 12px", 
-              fontSize: 12,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-              fontFamily: "sans-serif",
-              pointerEvents: "none",
-              zIndex: 10
+              top: 12, 
+              background: tooltipBg, 
+              color: tooltipText,
             }}
           >
-            <div style={{ fontWeight: "bold", marginBottom: 4, color: "#333" }}>
+            <div style={{ fontWeight: "bold", marginBottom: 4, color: tooltipText }}>
               {hover.x.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </div>
             {chartType === "candle" ? (
               <>
-                <div style={{ color: "#555" }}>Open: ${hover.open.toFixed(2)}</div>
-                <div style={{ color: "#555" }}>High: ${hover.high.toFixed(2)}</div>
-                <div style={{ color: "#555" }}>Low: ${hover.low.toFixed(2)}</div>
-                <div style={{ color: "#555" }}>Close: ${hover.close.toFixed(2)}</div>
+                <div style={{ color: tooltipText }}>Open: ${hover.open.toFixed(2)}</div>
+                <div style={{ color: tooltipText }}>High: ${hover.high.toFixed(2)}</div>
+                <div style={{ color: tooltipText }}>Low: ${hover.low.toFixed(2)}</div>
+                <div style={{ color: tooltipText }}>Close: ${hover.close.toFixed(2)}</div>
               </>
             ) : (
-              <div style={{ color: "#555" }}>Price: ${hover.close.toFixed(2)}</div>
+              <div style={{ color: tooltipText }}>Price: ${hover.close.toFixed(2)}</div>
             )}
           </div>
         )}
       </div>
 
       {/* Chart type toggle buttons */}
-      <div style={{ 
-        display: "flex", 
-        justifyContent: "center", 
-        gap: "8px", 
-        marginTop: "16px",
-        paddingBottom: "8px"
-      }}>
+      <div className="chart-toggle-group">
         <button
           onClick={() => setChartType("candle")}
-          style={{
-            padding: "8px 20px",
-            border: chartType === "candle" ? "2px solid #00c27a" : "2px solid #ddd",
-            borderRadius: "6px",
-            background: chartType === "candle" ? "#00c27a" : "#fff",
-            color: chartType === "candle" ? "#fff" : "#666",
-            fontWeight: chartType === "candle" ? "600" : "400",
-            fontSize: "13px",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            fontFamily: "sans-serif"
-          }}
-          onMouseEnter={(e) => {
-            if (chartType !== "candle") {
-              e.target.style.borderColor = "#00c27a";
-              e.target.style.color = "#00c27a";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (chartType !== "candle") {
-              e.target.style.borderColor = "#ddd";
-              e.target.style.color = "#666";
-            }
-          }}
+          className={`chart-toggle-btn ${chartType === "candle" ? "is-active" : ""}`}
         >
           Candle Chart
         </button>
         <button
           onClick={() => setChartType("line")}
-          style={{
-            padding: "8px 20px",
-            border: chartType === "line" ? "2px solid #00c27a" : "2px solid #ddd",
-            borderRadius: "6px",
-            background: chartType === "line" ? "#00c27a" : "#fff",
-            color: chartType === "line" ? "#fff" : "#666",
-            fontWeight: chartType === "line" ? "600" : "400",
-            fontSize: "13px",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            fontFamily: "sans-serif"
-          }}
-          onMouseEnter={(e) => {
-            if (chartType !== "line") {
-              e.target.style.borderColor = "#00c27a";
-              e.target.style.color = "#00c27a";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (chartType !== "line") {
-              e.target.style.borderColor = "#ddd";
-              e.target.style.color = "#666";
-            }
-          }}
+          className={`chart-toggle-btn ${chartType === "line" ? "is-active" : ""}`}
         >
           Line Chart
         </button>
