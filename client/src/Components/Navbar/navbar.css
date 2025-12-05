@@ -1,56 +1,163 @@
-/* General Navbar Styling */
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: 82px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: center;
+  background: radial-gradient(circle at 15% 20%, rgba(113, 99, 241, 0.22), transparent 32%),
+              radial-gradient(circle at 80% 10%, rgba(0, 249, 255, 0.18), transparent 30%),
+              rgba(2, 4, 18, 0.75);
+  box-sizing: border-box;
+  z-index: 1000;
+}
+
+.navbar-shell {
+  width: min(1180px, 100%);
+  min-height: 78px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 18% 50%, rgba(0, 249, 255, 0.12), transparent 35%),
+    radial-gradient(circle at 82% 20%, rgba(123, 97, 255, 0.16), transparent 40%),
+    linear-gradient(120deg, rgba(16, 21, 46, 0.9), rgba(8, 11, 30, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
-  background: linear-gradient(90deg, #7163f1, #9b6df8);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  overflow-x: hidden;
-  box-sizing: border-box;
-}
-/* Ensure items never get cut off */
-.navbar * {
-  box-sizing: border-box;
-}
-.navbar-left {
-  display: flex;
-  align-items: center;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
 }
 
-.navbar-logo {
-  width: 70px;
-  height: 70px;
-  object-fit: contain;
-  border-radius: 6px;
+.navbar-shell::before {
+  content: "";
+  position: absolute;
+  inset: -45% -25%;
+  background: conic-gradient(
+    from 120deg,
+    rgba(0, 249, 255, 0.28),
+    rgba(113, 99, 241, 0.22),
+    rgba(0, 249, 255, 0.24),
+    rgba(113, 99, 241, 0.22),
+    rgba(0, 249, 255, 0.28)
+  );
+  filter: blur(68px);
+  opacity: 0.45;
+  animation: navbarPulse 14s linear infinite;
+}
+
+.navbar-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.navbar-left,
+.navbar-right {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .navbar-home-link {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 8px 12px;
   text-decoration: none;
-  color: inherit; 
+  color: #f7f7ff;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.3s ease, border-color 0.2s ease;
+}
+
+.navbar-home-link:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 249, 255, 0.35);
+  border-color: rgba(0, 249, 255, 0.35);
+}
+
+.navbar-logo-wrap {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.navbar-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.navbar-logo-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 14px;
+  background: radial-gradient(circle, rgba(0, 249, 255, 0.35), rgba(113, 99, 241, 0));
+  filter: blur(12px);
+  opacity: 0.85;
+  z-index: 0;
+}
+
+.navbar-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .navbar-title {
-  color: #fff;
-  font-size: 1.7rem;
-  font-weight: 700;
+  color: #fefefe;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   margin: 0;
 }
 
+.navbar-subtitle {
+  margin: 0;
+  color: #b7c2ff;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
 .navbar-right {
+  gap: 1rem;
+}
+
+.navbar-links {
   display: flex;
   align-items: center;
-  gap: 2rem;
- font-weight: 600;
+  gap: 0.35rem;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .navbar-controls {
@@ -82,14 +189,53 @@
 }
 
 .navbar-link {
-  color: #fff;
+  position: relative;
+  color: #e8ecff;
   text-decoration: none;
-  font-weight: 600;
-  transition: color 0.25s ease;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  transition: color 0.2s ease, transform 0.2s ease, background 0.25s ease, border 0.25s ease;
+  border: 1px solid transparent;
+}
+
+.navbar-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(0, 249, 255, 0.18), rgba(113, 99, 241, 0.18));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: -1;
 }
 
 .navbar-link:hover {
-  color: #facc15;
+  color: #ffffff;
+  transform: translateY(-1px);
+  border-color: rgba(0, 249, 255, 0.35);
+}
+
+.navbar-link:hover::after {
+  opacity: 1;
+}
+
+.navbar-link.is-active {
+  background: linear-gradient(120deg, rgba(0, 249, 255, 0.25), rgba(113, 99, 241, 0.35));
+  color: #0a102b;
+  border-color: rgba(0, 249, 255, 0.55);
+  box-shadow: 0 12px 26px rgba(0, 249, 255, 0.25);
+}
+
+.navbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .auth-buttons {
@@ -98,37 +244,200 @@
   gap: 0.5rem;
 }
 
-.login-btn,
-.logout-btn {
+.auth-buttons button {
   text-decoration: none;
-  font-weight: 600;
-  padding: 8px 18px;
-  border-radius: 25px;
-  transition: all 0.25s ease-in-out;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 14px;
   font-size: 0.95rem;
   cursor: pointer;
+  border: 1px solid rgba(0, 249, 255, 0.6);
+  background: linear-gradient(120deg, #00f9ff, #5ef0ff);
+  color: #061022;
+  box-shadow: 0 12px 28px rgba(0, 249, 255, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.auth-buttons button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(0, 249, 255, 0.4);
 }
 
 .login-btn {
-  background-color: #00f9ff;
-  color: #000;
-  border: 1.5px solid #00f9ff;
-}
-
-.login-btn:hover {
-  background-color: #00e0e0;
-  border-color: #00e0e0;
+  background: linear-gradient(120deg, #00f9ff, #6c7bff);
+  border-color: rgba(0, 249, 255, 0.7);
+  color: #050f2a;
 }
 
 .logout-btn {
-  background-color: #00f9ff;
-  color: #000;
-  border: 1.5px solid #00f9ff;
+  background: linear-gradient(120deg, #f472b6, #7c3aed);
+  border-color: rgba(244, 114, 182, 0.65);
+  color: #0a0e1b;
 }
 
-.logout-btn:hover {
-  background-color: #00e0e0;
-  border-color: #00e0e0;
+.theme-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffe6a7;
+  cursor: pointer;
+  padding: 6px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-1px) scale(1.02);
+  color: #fff6d6;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+.theme-toggle__icon {
+  width: 24px;
+  height: 24px;
+}
+
+@keyframes navbarPulse {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1100px) {
+  .navbar {
+    padding: 12px 12px;
+  }
+  .navbar-shell {
+    width: 100%;
+  }
+  .navbar-title {
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .navbar-shell {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .navbar-right {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .navbar-links {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+  .navbar-links::-webkit-scrollbar {
+    display: none;
+  }
+  .navbar-controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 10px 10px;
+  }
+  .navbar-shell {
+    padding: 10px 12px;
+  }
+  .navbar-home-link {
+    width: 100%;
+    align-items: flex-start;
+  }
+  .navbar-title {
+    font-size: 0.98rem;
+  }
+  .navbar-subtitle {
+    font-size: 0.78rem;
+  }
+  .navbar-badge {
+    display: none;
+  }
+  .navbar-links {
+    gap: 0.5rem;
+  }
+  .navbar-link {
+    padding: 8px 12px;
+  }
+  .navbar-controls {
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .auth-buttons button {
+    padding: 9px 12px;
+  }
+}
+
+body.theme-light .navbar {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(113, 99, 241, 0.12), transparent 28%),
+    radial-gradient(circle at 78% 12%, rgba(0, 249, 255, 0.12), transparent 30%),
+    #f6f7ff;
+}
+
+body.theme-light .navbar-shell {
+  background:
+    radial-gradient(circle at 18% 50%, rgba(0, 249, 255, 0.08), transparent 35%),
+    radial-gradient(circle at 82% 20%, rgba(123, 97, 255, 0.12), transparent 40%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.92), rgba(238, 241, 255, 0.92));
+  border-color: rgba(17, 24, 39, 0.06);
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.12), 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+body.theme-light .navbar-home-link {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(17, 24, 39, 0.06);
+  box-shadow: 0 10px 32px rgba(17, 24, 39, 0.12);
+}
+
+body.theme-light .navbar-title {
+  color: #0f172a;
+}
+
+body.theme-light .navbar-subtitle {
+  color: #43506e;
+}
+
+body.theme-light .navbar-links {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(17, 24, 39, 0.08);
+}
+
+body.theme-light .navbar-link {
+  color: #1f2a44;
+}
+
+body.theme-light .navbar-link.is-active {
+  color: #0c1025;
+  box-shadow: 0 12px 26px rgba(0, 249, 255, 0.2);
+}
+
+body.theme-light .theme-toggle {
+  color: #4338ca;
+  background: rgba(17, 24, 39, 0.05);
+  border-color: rgba(17, 24, 39, 0.08);
+}
+
+body.theme-light .theme-toggle:hover {
+  color: #312e81;
+  background: rgba(17, 24, 39, 0.08);
 }
 
 body.theme-light .navbar {

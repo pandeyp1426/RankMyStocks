@@ -14,7 +14,8 @@ import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
-import stockUpdate
+import yfinance as yf
+import pandas as pd
 
 # Load    environment variables from .env file
 load_dotenv()
@@ -31,6 +32,42 @@ app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
 
 
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
+
+NEWS_CACHE_TTL = 55  # seconds
+market_news_cache = {"ts": 0.0, "articles": [], "as_of": None, "error": None}
+CHART_CACHE_TTL = 15 * 60  # seconds (15 minutes)
+chart_cache = {}
+
+
+def get_latest_prices_from_db(tickers):
+    """
+    Bulk fetch latest prices from stock_List for the given tickers.
+    Returns dict ticker -> price.
+    """
+    if not tickers:
+        return {}
+    conn = None
+    cursor = None
+    prices = {}
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        placeholders = ",".join(["%s"] * len(tickers))
+        cursor.execute(
+            f"SELECT ticker_symbol, stock_price FROM stock_List WHERE ticker_symbol IN ({placeholders})",
+            tuple(tickers),
+        )
+        for ticker, price in cursor.fetchall():
+            if ticker and price is not None:
+                prices[ticker.strip().upper()] = float(price)
+    except Exception as exc:
+        print("Error reading latest prices from DB:", exc)
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return prices
 
 from stocks import random_stock, get_stock_price, get_company_name
 from stocks import get_description
@@ -143,6 +180,100 @@ def compute_portfolio_snapshot_values(cursor, portfolio_id):
     change_pct = ((current - invested) / invested * 100) if invested > 0 else None
     return invested, current, change_pct
 
+
+def get_user_portfolio_tickers(user_id):
+    """
+    Return a dict of ticker -> count for all holdings belonging to the user.
+    Uses a single join query for efficiency.
+    """
+    user_id = normalize_user_identifier(user_id)
+    if user_id is None:
+        return {}
+    conn = None
+    cursor = None
+    tickers = {}
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT ps.ticker
+            FROM portfolios p
+            JOIN portfolio_stocks ps ON ps.portfolio_id = p.id
+            WHERE p.user_id = %s
+            """,
+            (user_id,),
+        )
+        for (ticker,) in cursor.fetchall():
+            t = (ticker or "").strip().upper()
+            if not t:
+                continue
+            tickers[t] = tickers.get(t, 0) + 1
+        return tickers
+    except Exception as exc:
+        print("Error reading user portfolios:", exc)
+        return {}
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def aggregate_yahoo_bars(df, ticker_counts):
+    """
+    Aggregate multi-ticker bars into a single series weighted by occurrence count.
+    """
+    if df is None or df.empty:
+        return []
+
+    # Drop tickers that are entirely missing to avoid noisy "failed download" cases
+    present = set()
+    if isinstance(df.columns, pd.MultiIndex):
+        present = set(df.columns.get_level_values(0))
+    else:
+        # single ticker case
+        present = set(ticker_counts.keys())
+
+    filtered_counts = {t: w for t, w in ticker_counts.items() if t in present and w > 0}
+    if not filtered_counts:
+        return []
+
+    agg = None
+    for ticker, weight in ticker_counts.items():
+        if ticker not in filtered_counts or weight <= 0:
+            continue
+        try:
+            if isinstance(df.columns, pd.MultiIndex):
+                if ticker not in df.columns.get_level_values(0):
+                    continue
+                sub = df[ticker][["Open", "High", "Low", "Close"]] * weight
+            else:
+                # Single ticker download
+                sub = df[["Open", "High", "Low", "Close"]] * weight
+            agg = sub if agg is None else agg.add(sub, fill_value=0)
+        except Exception as exc:
+            print(f"Error aggregating {ticker}:", exc)
+            continue
+
+    if agg is None or agg.empty:
+        return []
+
+    agg = agg.dropna(how="all")
+    series = []
+    for ts, row in agg.iterrows():
+        try:
+            epoch_ms = int(pd.Timestamp(ts).to_pydatetime().timestamp() * 1000)
+            series.append({
+                "x": epoch_ms,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+            })
+        except Exception:
+            continue
+    return series
 #  Routes
 @app.route("/")
 def home():
@@ -1043,6 +1174,360 @@ def daily_digest():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def _parse_news_timestamp(ts):
+    if not ts:
+        return None
+    ts = ts.strip()
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        pass
+    clean_ts = ts.replace("Z", "")
+    for fmt, length in (("%Y%m%dT%H%M%S", 15), ("%Y%m%dT%H%M", 13)):
+        try:
+            dt = datetime.strptime(clean_ts[:length], fmt)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
+
+
+def fetch_market_news(force=False):
+    now = time.time()
+    if force:
+        # Clear cache metadata so a manual refresh truly pulls fresh articles
+        market_news_cache["ts"] = 0.0
+        market_news_cache["articles"] = []
+        market_news_cache["as_of"] = None
+        market_news_cache["error"] = None
+
+    if not force and market_news_cache["articles"] and (now - market_news_cache["ts"]) < NEWS_CACHE_TTL:
+        return market_news_cache["articles"], market_news_cache.get("error"), True
+
+    def categorize_article(title, summary, tickers=None, sentiment=None):
+        text = " ".join([title or "", summary or ""]).lower()
+        tags = set()
+        earnings_terms = ("earnings", "eps", "results", "q1", "q2", "q3", "q4", "quarter", "guidance", "revenue", "profit", "loss", "forecast")
+        pump_terms = ("rally", "rallies", "surge", "surges", "spike", "spikes", "jump", "jumps", "soar", "soars", "beat", "beats", "beats estimates", "record high", "upgrade")
+        dump_terms = ("tank", "tanks", "plunge", "plunges", "drop", "drops", "sink", "sinks", "selloff", "downgrade", "cut forecast", "miss", "delist", "delisting")
+        guidance_terms = ("outlook", "guidance", "forecast", "update", "preview")
+        legal_terms = ("lawsuit", "investigation", "sec", "fine", "regulator", "probe", "class action", "settlement")
+        crypto_terms = ("bitcoin", "crypto", "ethereum", "token", "defi", "etf")
+
+        if any(term in text for term in earnings_terms):
+            tags.add("Earnings")
+        if any(term in text for term in guidance_terms):
+            tags.add("Performance/Guidance")
+        if any(term in text for term in pump_terms):
+            tags.add("Bullish Move")
+        if any(term in text for term in dump_terms):
+            tags.add("Bearish Move")
+        if any(term in text for term in legal_terms):
+            tags.add("Legal/Regulatory")
+        if any(term in text for term in crypto_terms):
+            tags.add("Crypto")
+        if tickers and len(tickers) >= 2:
+            tags.add("Multi-Ticker/Peers")
+
+        sentiment_norm = (sentiment or "").lower()
+        if sentiment_norm in ("positive", "bullish"):
+            tags.add("Bullish Move")
+        if sentiment_norm in ("negative", "bearish"):
+            tags.add("Bearish Move")
+
+        return sorted(tags)
+
+    articles = []
+    seen_titles = set()
+    error = None
+
+    def add_article(title, url_, source=None, summary=None, published_at=None, tickers=None, sentiment=None):
+        if not title:
+            return
+        normalized_title = title.strip()
+        if not normalized_title:
+            return
+        key = normalized_title.lower()
+        if key in seen_titles:
+            return
+        published_dt = _parse_news_timestamp(published_at)
+        payload = {
+            "title": normalized_title,
+            "url": url_,
+            "source": source or "Unknown",
+            "summary": summary.strip() if isinstance(summary, str) else summary,
+            "publishedAt": published_dt.isoformat() if published_dt else None,
+        }
+        if tickers:
+            payload["tickers"] = tickers
+        payload["categories"] = categorize_article(normalized_title, summary, tickers, sentiment)
+        articles.append(payload)
+        seen_titles.add(key)
+
+    marketaux_key = os.getenv("MARKETAUX_KEY")
+    if marketaux_key:
+        try:
+            url = (
+                "https://api.marketaux.com/v1/news/all?"
+                f"countries=us&language=en&filter_entities=true&limit=30&api_token={marketaux_key}"
+            )
+            resp = requests.get(url, timeout=10)
+            data = resp.json()
+            for item in data.get("data") or []:
+                tickers = []
+                for ent in item.get("entities") or []:
+                    sym = ent.get("symbol")
+                    if sym:
+                        tickers.append(str(sym).upper())
+                if isinstance(item.get("symbols"), list):
+                    tickers.extend([str(sym).upper() for sym in item["symbols"] if sym])
+                add_article(
+                    title=item.get("title"),
+                    url_=item.get("url"),
+                    source=item.get("source"),
+                    summary=item.get("description") or item.get("snippet"),
+                    published_at=item.get("published_at"),
+                    tickers=list(dict.fromkeys(tickers)) or None,
+                )
+        except Exception:
+            error = "Unable to reach Marketaux news feed."
+
+    alpha_key = (
+        os.getenv("ALPHAVANTAGE_KEY")
+        or os.getenv("ALPHA_VANTAGE_KEY")
+        or os.getenv("ALPHAVANTAGE_API_KEY")
+        or os.getenv("ALPHA_VANTAGE_API_KEY")
+        or os.getenv("ALPHAVANTAGE_NEWS_KEY")
+        or getattr(stocks, "API_KEY", None)
+    )
+    if alpha_key:
+        try:
+            alpha_url = (
+                "https://www.alphavantage.co/query?"
+                f"function=NEWS_SENTIMENT&topics=financial_markets&sort=LATEST&limit=50&apikey={alpha_key}"
+            )
+            alpha_resp = requests.get(alpha_url, timeout=10)
+            alpha_json = alpha_resp.json()
+            for item in alpha_json.get("feed") or []:
+                tickers = []
+                for t in item.get("ticker_sentiment") or []:
+                    sym = t.get("ticker")
+                    if sym:
+                        tickers.append(str(sym).upper())
+                add_article(
+                    title=item.get("title"),
+                    url_=item.get("url"),
+                    source=item.get("source"),
+                    summary=item.get("summary"),
+                    published_at=item.get("time_published"),
+                    tickers=tickers or None,
+                    sentiment=item.get("overall_sentiment_label"),
+                )
+        except Exception:
+            error = error or "Unable to reach Alpha Vantage news feed."
+    # Finnhub general market news (optional)
+    finnhub_key = os.getenv("FINNHUB_KEY")
+    if finnhub_key:
+        try:
+            finn_url = f"https://finnhub.io/api/v1/news?category=general&token={finnhub_key}"
+            resp = requests.get(finn_url, timeout=10)
+            data = resp.json()
+            for item in data or []:
+                add_article(
+                    title=item.get("headline"),
+                    url_=item.get("url"),
+                    source=item.get("source"),
+                    summary=item.get("summary"),
+                    published_at=item.get("datetime"),
+                    tickers=None,
+                    sentiment=item.get("sentiment"),
+                )
+        except Exception:
+            error = error or "Unable to reach Finnhub news feed."
+    # Financial Modeling Prep (optional)
+    fmp_key = os.getenv("FMP_API_KEY") or os.getenv("FINANCIAL_MODEL_PREP_KEY")
+    if fmp_key:
+        try:
+            fmp_url = f"https://financialmodelingprep.com/api/v3/stock_news?limit=50&apikey={fmp_key}"
+            resp = requests.get(fmp_url, timeout=10)
+            data = resp.json()
+            for item in data or []:
+                tickers = item.get("tickers") or []
+                add_article(
+                    title=item.get("title"),
+                    url_=item.get("url"),
+                    source=item.get("site"),
+                    summary=item.get("text"),
+                    published_at=item.get("publishedDate"),
+                    tickers=[str(t).upper() for t in tickers] if tickers else None,
+                    sentiment=None,
+                )
+        except Exception:
+            error = error or "Unable to reach Financial Modeling Prep news feed."
+    else:
+        error = "No news API key configured. Set MARKETAUX_KEY or ALPHAVANTAGE_KEY."
+
+    if not articles and market_news_cache["articles"]:
+        return market_news_cache["articles"], market_news_cache.get("error"), True
+    if not articles:
+        return [], error or "No news articles available.", False
+
+    articles.sort(
+        key=lambda h: _parse_news_timestamp(h["publishedAt"]) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    # Windowing: recent 24h (1 day) plus highlights from last quarter
+    now_dt = datetime.now(timezone.utc)
+    recent_cutoff = now_dt - timedelta(hours=24)
+    quarter_cutoff = now_dt - timedelta(days=90)
+
+    recent_items = []
+    quarter_highlights = []
+    for art in articles:
+        dt = _parse_news_timestamp(art.get("publishedAt"))
+        if dt is None:
+            recent_items.append(art)
+            continue
+        if dt >= recent_cutoff:
+            recent_items.append(art)
+        elif dt >= quarter_cutoff:
+            tagged = dict(art)
+            cats = set(tagged.get("categories") or [])
+            cats.add("Last Quarter Highlight")
+            tagged["categories"] = sorted(cats)
+            quarter_highlights.append(tagged)
+
+    recent_items.sort(key=lambda h: _parse_news_timestamp(h.get("publishedAt")) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    quarter_highlights.sort(key=lambda h: _parse_news_timestamp(h.get("publishedAt")) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    final_articles = recent_items + quarter_highlights[:20]
+
+    market_news_cache["articles"] = final_articles
+    market_news_cache["ts"] = now
+    market_news_cache["as_of"] = now_dt.isoformat()
+    market_news_cache["error"] = None if final_articles else error
+
+    return market_news_cache["articles"], market_news_cache.get("error"), False
+
+
+@app.route("/api/market-news", methods=["GET"])
+def market_news():
+    try:
+        force = request.args.get("force") in ("1", "true", "yes", "y", "on")
+        articles, error, from_cache = fetch_market_news(force=force)
+        return jsonify({
+            "articles": articles,
+            "asOf": market_news_cache.get("as_of"),
+            "count": len(articles),
+            "error": error,
+            "fromCache": from_cache,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def fetch_yahoo_portfolio_chart(ticker_counts):
+    tickers = list(ticker_counts.keys())
+    if not tickers:
+        return {"intraday": [], "daily": []}
+    tickers_str = " ".join(tickers)
+    intraday_df = None
+    daily_df = None
+    try:
+        intraday_df = yf.download(
+            tickers_str,
+            period="1d",
+            interval="60m",
+            progress=False,
+            threads=False,
+            group_by="ticker",
+            auto_adjust=False,
+        )
+    except Exception as exc:
+        print("Error fetching intraday from Yahoo:", exc)
+
+    try:
+        daily_df = yf.download(
+            tickers_str,
+            period="1y",
+            interval="1d",
+            progress=False,
+            threads=False,
+            group_by="ticker",
+            auto_adjust=False,
+        )
+    except Exception as exc:
+        print("Error fetching daily from Yahoo:", exc)
+
+    agg_intraday = aggregate_yahoo_bars(intraday_df, ticker_counts)
+    agg_daily = aggregate_yahoo_bars(daily_df, ticker_counts)
+    return {
+        "intraday": agg_intraday,
+        "daily": agg_daily,
+    }
+
+
+@app.route("/api/portfolio-chart", methods=["GET"])
+def portfolio_chart():
+    try:
+        raw_user = request.args.get("userId") or request.args.get("user_id")
+        user_id = normalize_user_identifier(raw_user)
+        if user_id is None:
+            return jsonify({"intraday": [], "daily": [], "error": "invalid user id"}), 400
+
+        ticker_counts = get_user_portfolio_tickers(user_id)
+        if not ticker_counts:
+            return jsonify({"intraday": [], "daily": [], "count": 0})
+
+        cache_key = tuple(sorted(ticker_counts.items()))
+        cached = chart_cache.get(cache_key)
+        now_ts = time.time()
+        if cached and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
+            payload = cached["data"]
+            payload["fromCache"] = True
+            payload["asOf"] = cached.get("asOf")
+            return jsonify(payload)
+
+        data = fetch_yahoo_portfolio_chart(ticker_counts)
+        intraday = data.get("intraday") or []
+        daily = data.get("daily") or []
+
+        # Append latest point using DB snapshot prices
+        latest_prices = get_latest_prices_from_db(list(ticker_counts.keys()))
+        latest_total = None
+        if latest_prices:
+          latest_total = sum((latest_prices.get(t, 0.0) * qty) for t, qty in ticker_counts.items())
+          now_iso = datetime.now(timezone.utc).isoformat()
+          latest_point = {"x": now_iso, "open": latest_total, "high": latest_total, "low": latest_total, "close": latest_total}
+          if intraday:
+            intraday = [p for p in intraday if p.get("x") != latest_point["x"]]
+            intraday.append(latest_point)
+          if daily:
+            daily = [p for p in daily if p.get("x") != latest_point["x"]]
+            daily.append(latest_point)
+
+        payload = {
+          "intraday": intraday,
+          "daily": daily,
+          "latestValue": latest_total,
+          "fromCache": False,
+          "asOf": datetime.now(timezone.utc).isoformat(),
+        }
+        chart_cache[cache_key] = {"ts": now_ts, "data": payload, "asOf": payload["asOf"]}
+        return jsonify(payload)
+    except Exception as exc:
+        print("Error in portfolio-chart endpoint:", exc)
+        cached = chart_cache.get(cache_key or ())
+        if cached:
+            payload = cached["data"]
+            payload["fromCache"] = True
+            payload["stale"] = True
+            return jsonify(payload)
+        return jsonify({"intraday": [], "daily": [], "error": "server error"}), 500
 
 # ---- Delete Portfolio ----
 @app.route("/api/delete-portfolio/<int:portfolio_id>", methods=["DELETE"])

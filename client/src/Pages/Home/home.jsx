@@ -11,7 +11,24 @@ import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx";
 import { StockSearch } from "../../Components/StockSearch/stockSearch.jsx";
 import { PortfolioChart } from "../../Components/PortfolioChart/portfolioChart.jsx";
 
+const CHART_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+const formatRelative = (ts) => {
+  if (!ts) return "not updated";
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins === 1) return "1 min ago";
+  if (mins < 60) return `${mins} mins ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day ago" : `${days} days ago`;
+};
+
 export function Home() {
+  const MAX_TICKERS_FOR_CHART = 12; // broader coverage while still avoiding hard rate limits
   const { isAuthenticated, isLoading } = useAuth0();
   const activeUserId = useSelector((state) => state.auth.userID);
   const [buttonPopup, setButtonPopup] = useState(false);
@@ -26,7 +43,10 @@ export function Home() {
   const [allCandleData, setAllCandleData] = useState([]);
   const [intradayData, setIntradayData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
+  const [chartUpdatedAt, setChartUpdatedAt] = useState(null);
+  const [chartRefreshToken, setChartRefreshToken] = useState(0);
   const [latestPrices, setLatestPrices] = useState({}); // Store latest price for each stock
+  const [chartError, setChartError] = useState("");
 
   function handleClick() {
     setButtonPopup(true);
@@ -41,6 +61,8 @@ export function Home() {
         setTotalPortfolioValue(0);
         setTotalStocks(0);
         setPortfolios([]);
+        setChartUpdatedAt(null);
+        setChartError("");
         return;
       }
       
@@ -96,26 +118,24 @@ export function Home() {
   // Aggregate candles by period (week or month)
   function aggregateCandlesByPeriod(data, periodDays) {
     if (!data || data.length === 0) return data;
-    
-    if (periodDays === 1) {
-      return data;
-    }
-    
+    if (periodDays === 1) return data;
+
     const grouped = {};
-    
+
     data.forEach(candle => {
       const date = new Date(candle.x);
       let periodKey;
-      
+
       if (periodDays === 7) {
         const weekStart = new Date(date);
         weekStart.setDate(date.getDate() - date.getDay());
         weekStart.setHours(0, 0, 0, 0);
         periodKey = weekStart.getTime();
       } else {
+        // monthly buckets
         periodKey = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
       }
-      
+
       if (!grouped[periodKey]) {
         grouped[periodKey] = {
           x: periodKey,
@@ -123,7 +143,7 @@ export function Home() {
           high: candle.high,
           low: candle.low,
           close: candle.close,
-          first: true
+          first: true,
         };
       } else {
         grouped[periodKey].high = Math.max(grouped[periodKey].high, candle.high);
@@ -131,14 +151,13 @@ export function Home() {
         grouped[periodKey].close = candle.close;
       }
     });
-    
+
     return Object.values(grouped).sort((a, b) => a.x - b.x);
   }
 
   // Filter and aggregate data based on selected timeframe
-  function filterAndAggregateByTimeframe(data, timeframe) {
+  function filterAndAggregateByTimeframe(data, timeframe, isIntraday = false) {
     if (!data || !data.length) {
-      console.log("No data to filter");
       return [];
     }
 
@@ -148,367 +167,150 @@ export function Home() {
     let filtered = [];
 
     switch (timeframe) {
-      case "1D":
-        filtered = data.slice(-30);
-        console.log("1D filter - taking last 30 points from intraday data");
-        if (filtered.length > 0) {
-          console.log("Earliest point:", new Date(filtered[0]?.x));
-          console.log("Latest point:", new Date(filtered[filtered.length - 1]?.x));
-        }
-        return filtered;
-      case "1W":
+      case "1D": {
+        // last 24h up to now (keeps data even if timezone offsets push timestamps before local midnight)
+        const end = now;
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        filtered = data.filter((point) => {
+          const pointDate = new Date(point.x);
+          return pointDate >= startDate && pointDate <= end;
+        });
+        return filtered.slice(-300);
+      }
+      case "1W": {
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        aggregateDays = 1; // daily (no aggregation)
+        break;
+      }
+      case "1M": {
+        startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000); // last 4 weeks daily
         aggregateDays = 1;
         break;
-      case "1M":
-        startDate = new Date();
-        startDate.setMonth(now.getMonth() - 1);
-        aggregateDays = 1;
+      }
+      case "1Y": {
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        aggregateDays = 30; // roughly monthly buckets
         break;
-      case "1Y":
-        startDate = new Date();
-        startDate.setFullYear(now.getFullYear() - 1);
-        aggregateDays = 7;
-        break;
+      }
       case "ALL":
-      default:
+      default: {
         startDate = new Date(0);
-        aggregateDays = 30;
+        aggregateDays = 30; // monthly buckets
         break;
+      }
     }
 
-    filtered = data.filter(point => {
-      const pointDate = new Date(point.x);
-      return pointDate >= startDate;
-    });
-    
-    console.log(`Filtered from ${data.length} to ${filtered.length} points for ${timeframe}`);
-    
+    filtered = data.filter(point => new Date(point.x) >= startDate);
+
     if (aggregateDays > 1) {
       filtered = aggregateCandlesByPeriod(filtered, aggregateDays);
     }
-    
+
     return filtered;
   }
 
   // Fetch candle data for chart - only runs once on mount
   useEffect(() => {
-    async function loadPortfolioCandles() {
-      if (isLoading) {
-        return;
+    const cacheKey = activeUserId ? `portfolioChart_${activeUserId}` : null;
+
+    const tryLoadCache = () => {
+      if (!cacheKey || typeof window === "undefined") return false;
+      try {
+        const raw = window.localStorage.getItem(cacheKey);
+        if (!raw) return false;
+        const parsedCache = JSON.parse(raw);
+        if (!parsedCache?.fetchedAt || (Date.now() - parsedCache.fetchedAt) > CHART_CACHE_TTL_MS) {
+          return false;
+        }
+        setLatestPrices(parsedCache.latestPrices || {});
+        setAllCandleData(parsedCache.allCandleData || []);
+        setIntradayData(parsedCache.intradayData || []);
+        setChartUpdatedAt(parsedCache.fetchedAt);
+        setChartLoading(false);
+        return true;
+      } catch (err) {
+        console.warn("Unable to read chart cache", err);
+        return false;
       }
-      
+    };
+
+    const saveCache = (payload) => {
+      if (!cacheKey || typeof window === "undefined") return;
+      try {
+        window.localStorage.setItem(cacheKey, JSON.stringify(payload));
+      } catch (err) {
+        console.warn("Unable to write chart cache", err);
+      }
+    };
+
+    async function loadPortfolioCandles() {
+      if (isLoading) return;
       if (!isAuthenticated || !activeUserId) {
         setChartLoading(false);
         return;
       }
-      
-      setChartLoading(true);
-      const API_KEY = import.meta.env.VITE_ALPHA_API_KEY;
-      if (!API_KEY) {
-        console.error("API key not found");
-        setChartLoading(false);
+
+      // Use cache if fresh
+      if (tryLoadCache()) {
+        console.log("Loaded portfolio chart from cache");
         return;
       }
 
+      setChartLoading(true);
+      setChartError("");
+
       try {
-        const res = await fetch(`http://127.0.0.1:5002/api/portfolios?userId=${encodeURIComponent(activeUserId)}`);
-        const userPortfolios = await res.json();
-        
-        console.log("Active user ID for chart:", activeUserId);
-        console.log("User portfolios for chart:", userPortfolios.length);
-        
-        if (!userPortfolios.length) {
-          console.log("No portfolios found for current user");
-          setChartLoading(false);
-          return;
+        const resp = await fetch(`http://127.0.0.1:5002/api/portfolio-chart?userId=${encodeURIComponent(activeUserId)}`);
+        if (!resp.ok) {
+          throw new Error(`Chart request failed: ${resp.status}`);
+        }
+        const payload = await resp.json();
+        const intraday = Array.isArray(payload.intraday) ? payload.intraday : [];
+        const daily = Array.isArray(payload.daily) ? payload.daily : [];
+        if (payload.latestValue && !Number.isNaN(payload.latestValue)) {
+          setTotalPortfolioValue(payload.latestValue);
         }
 
-        const tickerCount = {};
-        userPortfolios.forEach(p => {
-          p.stocks?.forEach(s => {
-            const ticker = s.ticker;
-            if (!tickerCount[ticker]) {
-              tickerCount[ticker] = 0;
-            }
-            tickerCount[ticker] += 1;
-          });
-        });
-
-        const uniqueTickers = Object.keys(tickerCount);
-        console.log("Tickers in portfolio (fantasy draft style):", tickerCount);
-        console.log("Total unique stocks:", uniqueTickers.length);
-        console.log("Total stock picks:", Object.values(tickerCount).reduce((a, b) => a + b, 0));
-
-        const stockDataMap = {};
-        const intradayDataMap = {};
-        const latestPriceMap = {}; // Track latest price for each stock
-
-        // First, get latest prices from your portfolio data (as fallback)
-        userPortfolios.forEach(p => {
-          p.stocks?.forEach(s => {
-            if (s.ticker && s.price) {
-              latestPriceMap[s.ticker] = parseFloat(s.price);
-            }
-          });
-        });
-        
-        console.log("Initial prices from portfolio:", latestPriceMap);
-
-        // Fetch both daily and intraday data
-        for (const ticker of uniqueTickers) {
-          try {
-            // Fetch daily data for longer timeframes
-            const dailyResp = await fetch(
-              `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${ticker}&apikey=${API_KEY}`
-            );
-            const dailyJson = await dailyResp.json();
-            const dailySeries = dailyJson["Time Series (Daily)"];
-            
-            if (dailySeries) {
-              const ohlc = Object.entries(dailySeries).map(([date, values]) => ({
-                x: new Date(date).getTime(),
-                open: Number(values["1. open"]),
-                high: Number(values["2. high"]),
-                low: Number(values["3. low"]),
-                close: Number(values["4. close"]),
-              }));
-              stockDataMap[ticker] = ohlc;
-              
-              // Store the most recent close price (update if more recent than portfolio data)
-              if (ohlc.length > 0) {
-                const sortedOhlc = [...ohlc].sort((a, b) => b.x - a.x);
-                latestPriceMap[ticker] = sortedOhlc[0].close;
-              }
-              
-              console.log(`Fetched ${ohlc.length} daily data points for ${ticker}, latest: ${latestPriceMap[ticker]?.toFixed(2)}`);
-            } else {
-              console.warn(`No daily data for ${ticker}, using portfolio price: ${latestPriceMap[ticker]?.toFixed(2)}`);
-              // Create a synthetic data point using portfolio price if no API data
-              if (latestPriceMap[ticker]) {
-                const now = Date.now();
-                stockDataMap[ticker] = [{
-                  x: now,
-                  open: latestPriceMap[ticker],
-                  high: latestPriceMap[ticker],
-                  low: latestPriceMap[ticker],
-                  close: latestPriceMap[ticker],
-                }];
-              }
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Fetch intraday data for 1D view
-            const intradayResp = await fetch(
-              `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${ticker}&interval=5min&apikey=${API_KEY}`
-            );
-            const intradayJson = await intradayResp.json();
-            const intradaySeries = intradayJson["Time Series (5min)"];
-            
-            if (intradaySeries) {
-              const intraday = Object.entries(intradaySeries).map(([datetime, values]) => ({
-                x: new Date(datetime).getTime(),
-                open: Number(values["1. open"]),
-                high: Number(values["2. high"]),
-                low: Number(values["3. low"]),
-                close: Number(values["4. close"]),
-              }));
-              intradayDataMap[ticker] = intraday;
-              
-              // Update latest price if intraday has more recent data
-              if (intraday.length > 0) {
-                const sortedIntraday = [...intraday].sort((a, b) => b.x - a.x);
-                latestPriceMap[ticker] = sortedIntraday[0].close;
-              }
-              
-              console.log(`Fetched ${intraday.length} intraday data points for ${ticker}`);
-            } else {
-              console.warn(`No intraday data for ${ticker}`);
-              // Create synthetic intraday point using latest price
-              if (latestPriceMap[ticker]) {
-                const now = Date.now();
-                intradayDataMap[ticker] = [{
-                  x: now,
-                  open: latestPriceMap[ticker],
-                  high: latestPriceMap[ticker],
-                  low: latestPriceMap[ticker],
-                  close: latestPriceMap[ticker],
-                }];
-              }
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 1));
-
-          } catch (err) {
-            console.error(`Error fetching data for ${ticker}:`, err);
-            // Even on error, ensure we have a fallback price
-            if (!latestPriceMap[ticker]) {
-              console.error(`No price available for ${ticker} - this stock will be excluded from charts`);
-            }
-          }
+        if (!intraday.length && !daily.length) {
+          setChartError(payload.error || "No chart data yet. Refresh in a minute.");
         }
 
-        // Store latest prices
-        setLatestPrices(latestPriceMap);
-        console.log("Latest prices:", latestPriceMap);
+        setAllCandleData(daily);
+        setIntradayData(intraday);
+        setLineData(daily.map(point => ({ x: point.x, y: point.close })));
+        const fetchedAt = Date.now();
+        setChartUpdatedAt(fetchedAt);
 
-        if (Object.keys(stockDataMap).length === 0) {
-          console.error("No stock data fetched");
-          setChartLoading(false);
-          return;
-        }
-
-        // Calculate total portfolio value for each timestamp (daily)
-        // Get all unique timestamps first
-        const allDailyTimestamps = new Set();
-        Object.values(stockDataMap).forEach(ohlcArray => {
-          ohlcArray.forEach(point => allDailyTimestamps.add(point.x));
-        });
-
-        const sortedDailyTimestamps = Array.from(allDailyTimestamps).sort((a, b) => a - b);
-        
-        // For each timestamp, calculate portfolio value using latest available price
-        const dateMap = {};
-        const lastKnownDailyPrice = {}; // Track last known price for each stock
-        
-        sortedDailyTimestamps.forEach(timestamp => {
-          dateMap[timestamp] = { open: 0, high: 0, low: 0, close: 0 };
-          
-          Object.entries(tickerCount).forEach(([ticker, count]) => {
-            // Find the data point for this stock at this timestamp
-            const stockData = stockDataMap[ticker];
-            const dataPoint = stockData?.find(p => p.x === timestamp);
-            
-            if (dataPoint) {
-              // Stock traded at this time, use actual values
-              lastKnownDailyPrice[ticker] = dataPoint.close;
-              dateMap[timestamp].open += dataPoint.open * count;
-              dateMap[timestamp].high += dataPoint.high * count;
-              dateMap[timestamp].low += dataPoint.low * count;
-              dateMap[timestamp].close += dataPoint.close * count;
-            } else {
-              // Stock didn't trade, use last known price or latest price
-              const priceToUse = lastKnownDailyPrice[ticker] || latestPriceMap[ticker] || 0;
-              dateMap[timestamp].open += priceToUse * count;
-              dateMap[timestamp].high += priceToUse * count;
-              dateMap[timestamp].low += priceToUse * count;
-              dateMap[timestamp].close += priceToUse * count;
-            }
-          });
-        });
-
-        const merged = Object.entries(dateMap)
-          .map(([ts, vals]) => ({
-            x: Number(ts),
-            open: vals.open,
-            high: vals.high,
-            low: vals.low,
-            close: vals.close,
-          }))
-          .sort((a, b) => a.x - b.x);
-
-        console.log("Merged daily portfolio value points:", merged.length);
-        if (merged.length > 0) {
-          console.log("Sample portfolio values:", {
-            first: merged[0].close.toFixed(2),
-            last: merged[merged.length - 1].close.toFixed(2)
+        if (daily.length || intraday.length) {
+          saveCache({
+            fetchedAt,
+            latestPrices: latestPrices, // keep existing latest prices
+            allCandleData: daily,
+            intradayData: intraday,
+            latestValue: payload.latestValue || null,
           });
         }
-        
-        // Calculate total portfolio value for each timestamp (intraday)
-        // Get all unique timestamps first
-        const allTimestamps = new Set();
-        Object.values(intradayDataMap).forEach(ohlcArray => {
-          ohlcArray.forEach(point => allTimestamps.add(point.x));
-        });
-
-        const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
-        
-        // For each timestamp, calculate portfolio value using latest available price
-        const intradayMap = {};
-        const lastKnownPrice = {}; // Track last known price for each stock
-        
-        sortedTimestamps.forEach(timestamp => {
-          intradayMap[timestamp] = { open: 0, high: 0, low: 0, close: 0 };
-          
-          Object.entries(tickerCount).forEach(([ticker, count]) => {
-            // Find the data point for this stock at this timestamp
-            const stockData = intradayDataMap[ticker];
-            const dataPoint = stockData?.find(p => p.x === timestamp);
-            
-            if (dataPoint) {
-              // Stock traded at this time, use actual values
-              lastKnownPrice[ticker] = dataPoint.close;
-              intradayMap[timestamp].open += dataPoint.open * count;
-              intradayMap[timestamp].high += dataPoint.high * count;
-              intradayMap[timestamp].low += dataPoint.low * count;
-              intradayMap[timestamp].close += dataPoint.close * count;
-            } else {
-              // Stock didn't trade, use last known price or latest price
-              const priceToUse = lastKnownPrice[ticker] || latestPriceMap[ticker] || 0;
-              intradayMap[timestamp].open += priceToUse * count;
-              intradayMap[timestamp].high += priceToUse * count;
-              intradayMap[timestamp].low += priceToUse * count;
-              intradayMap[timestamp].close += priceToUse * count;
-            }
-          });
-        });
-
-        const mergedIntraday = Object.entries(intradayMap)
-          .map(([ts, vals]) => ({
-            x: Number(ts),
-            open: vals.open,
-            high: vals.high,
-            low: vals.low,
-            close: vals.close,
-          }))
-          .sort((a, b) => a.x - b.x);
-
-        console.log("Merged intraday portfolio value points:", mergedIntraday.length);
-        if (mergedIntraday.length > 0) {
-          console.log("Sample intraday values:", {
-            first: mergedIntraday[0].close.toFixed(2),
-            last: mergedIntraday[mergedIntraday.length - 1].close.toFixed(2)
-          });
-        }
-        
-        // Store both datasets
-        setAllCandleData(merged);
-        setIntradayData(mergedIntraday);
-        
-        const lineSeries = merged.map(point => ({ x: point.x, y: point.close }));
-        setLineData(lineSeries);
-
       } catch (err) {
         console.error("Error loading portfolio candles:", err);
+        setChartError("Unable to load chart data right now.");
       } finally {
         setChartLoading(false);
       }
     }
 
     loadPortfolioCandles();
-  }, [isAuthenticated, isLoading, activeUserId]);
+  }, [isAuthenticated, isLoading, activeUserId, chartRefreshToken]);
 
   // Update displayed data when timeframe changes or data loads
   useEffect(() => {
-    console.log("=== Timeframe change to:", timeFrame);
-    console.log("Daily data length:", allCandleData.length);
-    console.log("Intraday data length:", intradayData.length);
-    
     const dataToFilter = timeFrame === "1D" ? intradayData : allCandleData;
-    
+
     if (dataToFilter.length === 0) {
-      console.log("No candle data available yet for timeframe:", timeFrame);
       setCandleData([]);
       return;
     }
 
-    console.log("Data to filter:", dataToFilter.slice(0, 3));
-    const filteredData = filterAndAggregateByTimeframe(dataToFilter, timeFrame);
-    console.log("Filtered data points:", filteredData.length);
-    console.log("First few filtered:", filteredData.slice(0, 3));
-    
+    const filteredData = filterAndAggregateByTimeframe(dataToFilter, timeFrame, timeFrame === "1D");
     setCandleData(filteredData);
 
     if (filteredData.length > 1) {
@@ -524,6 +326,15 @@ export function Home() {
       setChartPct(null);
     }
   }, [timeFrame, allCandleData, intradayData]);
+
+  const handleChartRefresh = () => {
+    const cacheKey = activeUserId ? `portfolioChart_${activeUserId}` : null;
+    if (cacheKey && typeof window !== "undefined") {
+      window.localStorage.removeItem(cacheKey);
+    }
+    setChartLoading(true);
+    setChartRefreshToken(Date.now());
+  };
 
   return (
     <div className="home">
@@ -556,17 +367,27 @@ export function Home() {
         <div className="portfolio-card">
           <div className="portfolio-header">
             <h2>Portfolio</h2>
-            <select
-              className="timeframe-select"
-              value={timeFrame}
-              onChange={(e) => setTimeFrame(e.target.value)}
-            >
-              <option value="1D">1D</option>
-              <option value="1W">1W</option>
-              <option value="1M">1M</option>
-              <option value="1Y">1Y</option>
-              <option value="ALL">ALL</option>
-            </select>
+            <div className="chart-actions">
+              <span className="chart-updated">Updated {formatRelative(chartUpdatedAt)}</span>
+              <button
+                className="chart-refresh-btn"
+                onClick={handleChartRefresh}
+                disabled={chartLoading}
+              >
+                {chartLoading ? "Refreshing..." : "Refresh data"}
+              </button>
+              <select
+                className="timeframe-select"
+                value={timeFrame}
+                onChange={(e) => setTimeFrame(e.target.value)}
+              >
+                <option value="1D">1D</option>
+                <option value="1W">1W</option>
+                <option value="1M">1M</option>
+                <option value="1Y">1Y</option>
+                <option value="ALL">ALL</option>
+              </select>
+            </div>
           </div>
 
           <h1 className="portfolio-value">
@@ -585,14 +406,18 @@ export function Home() {
 
           <p className="portfolio-sub"># of Stocks: {totalStocks}</p>
 
-          <div className="portfolio-chart">
+      <div className="portfolio-chart">
             {chartLoading ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>
                 Loading chart data...
               </div>
-            ) : candleData.length === 0 ? (
+            ) : chartError ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#d14343', fontWeight: 600 }}>
+                {chartError}
+              </div>
+            ) : candleData.length < 2 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>
-                Login to view your portfolio chart.
+                Not enough price points yet. Try Refresh in a minute.
               </div>
             ) : (
               <PortfolioChart candleData={candleData} />
