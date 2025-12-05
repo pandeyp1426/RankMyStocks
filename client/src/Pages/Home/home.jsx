@@ -297,7 +297,7 @@ export function Home() {
               }
             }
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1));
 
             // Fetch intraday data for 1D view
             const intradayResp = await fetch(
