@@ -3,6 +3,7 @@ import { Home } from "./Pages/Home/home.jsx";
 import { MyPortfolios } from "./Pages/MyPortfolio/myPortfolios.jsx";
 import { PortfolioRankings } from "./Pages/Rankings/portfolioRankings.jsx";
 import { Questionair } from "./Pages/Home/questionair.jsx";
+import { News } from "./Pages/News/news.jsx";
 import { Layout } from "./layout.jsx";
 import "./App.css";
 function App() {
@@ -14,6 +15,7 @@ function App() {
           <Route path="/myPortfolios" element={<MyPortfolios/>}/>
           <Route path="/portfolioRankings" element={<PortfolioRankings/>}/>
           <Route path="/questionair" element={<Questionair/>}/>
+          <Route path="/news" element={<News/>}/>
         </Route>
       </Routes>
     </Router>
