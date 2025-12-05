@@ -1,15 +1,12 @@
 from flask import Flask, session, jsonify, request
 import requests
 import mysql.connector
-import urllib.request
 import os
 import random
 import time
-import csv
 from datetime import datetime, timedelta, timezone
 from flask_cors import CORS
 from dotenv import load_dotenv
-import urllib.parse
 import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -1515,10 +1512,11 @@ def portfolio_chart():
         if not ticker_counts:
             return jsonify({"intraday": [], "daily": [], "count": 0})
 
+        skip_cache = request.args.get("skipCache") == "1"
         cache_key = tuple(sorted(ticker_counts.items()))
         cached = chart_cache.get(cache_key)
         now_ts = time.time()
-        if cached and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
+        if cached and not skip_cache and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
             payload = cached["data"]
             payload["fromCache"] = True
             payload["asOf"] = cached.get("asOf")
@@ -1549,6 +1547,7 @@ def portfolio_chart():
           "fromCache": False,
           "asOf": datetime.now(timezone.utc).isoformat(),
         }
+        # Refresh cache even when skipCache is used so future non-forced reads see the latest
         chart_cache[cache_key] = {"ts": now_ts, "data": payload, "asOf": payload["asOf"]}
         return jsonify(payload)
     except Exception as exc:

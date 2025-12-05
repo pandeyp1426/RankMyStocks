@@ -53,6 +53,8 @@ export function PortfolioChart({
   // Build padded intraday series from midnight to now, filling hourly with last known close
   const plotData = useMemo(() => {
     if (!parsed.length || !isIntradayRange) return parsed;
+    // Keep real OHLC values for candles; padding is only for the line view
+    if (chartType === "candle") return parsed;
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const now = new Date();
@@ -77,7 +79,7 @@ export function PortfolioChart({
       }
     }
     return padded.length ? padded : parsed;
-  }, [parsed, isIntradayRange]);
+  }, [parsed, isIntradayRange, chartType]);
 
   const yVals = plotData.flatMap(d => [d.high, d.low]);
   const yMin = Math.min(...yVals) * 0.98;
