@@ -1,12 +1,11 @@
 import datetime
 import yfinance as yf
-import app
 import time
 from random import shuffle
 
 def update_stock_prices():
-    """Fast update - just prices. Run every hour."""
-    conn = app.get_db_connection()
+    from app import get_db_connection
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT ticker_symbol FROM stock_List")
     all_tickers = [row[0].strip() for row in cursor.fetchall()]
@@ -65,12 +64,8 @@ def update_stock_prices():
 
 
 def update_fundamentals_batch(limit=50):
-    """
-    Slow update - fundamentals only. 
-    Updates oldest/missing data first.
-    Run this periodically throughout the day.
-    """
-    conn = app.get_db_connection()
+    from app import get_db_connection
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     cursor.execute("""
@@ -148,12 +143,12 @@ def update_fundamentals_batch(limit=50):
 
 
 def full_update():
-    """Complete update - use sparingly (maybe once per day)"""
     print("Starting price updates...")
     update_stock_prices()
     
     print("\nStarting fundamental updates...")
-    conn = app.get_db_connection()
+    from app import get_db_connection
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM stock_List")
     total = cursor.fetchone()[0]

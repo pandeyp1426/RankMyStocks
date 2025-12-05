@@ -16,7 +16,7 @@ from langchain_core.prompts import ChatPromptTemplate
 import stocks
 import stockUpdate
 
-# Load    environment variables from .env file
+# Load environment variables from .env file
 load_dotenv()
 
 OPEN_AI_API_KEY = os.getenv("API_KEY") or "badkey"

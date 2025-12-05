@@ -1,17 +1,13 @@
 import csv
-import json
 import random
 import requests
 import queue
-import secrets
 import logging
 import os
-from datetime import datetime, timedelta
 from time import time as _time
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
-
 
 logger = logging.getLogger(__name__)
 _INFO_CACHE = {}
@@ -19,7 +15,6 @@ _CACHE_TTL_SECONDS = 60 * 15
 _cache_lock = threading.Lock()
 _TICKER_CACHE = None
 _ticker_cache_lock = threading.Lock()
-
 
 def generate_ticker_list(size):
     tickers = []
@@ -29,83 +24,65 @@ def generate_ticker_list(size):
 
 
 def random_stock():
-    with open("ticker_list.csv", mode="r") as file:
-        reader = csv.reader(file)
-        stock_list = list(reader)
+    from app import get_db_connection
+    myCursor = get_db_connection().cursor()
+    myCursor.execute("SELECT ticker_symbol FROM stock_List")
+    stock_list = myCursor.fetchall()
     if not stock_list:
         return None
+    myCursor.close()
     return random.choice(stock_list)[0]
 
-
-def _get_ticker_info(ticker):
-    ticker = (ticker or "").strip().upper()
-    if not ticker:
-        return {}
-
-    now_ts = _time()
-    with _cache_lock:
-        cached = _INFO_CACHE.get(ticker)
-    if cached and now_ts - cached["timestamp"] < _CACHE_TTL_SECONDS:
-        return cached["info"]
-
-    try:
-        info = yf.Ticker(ticker).info or {}
-    except Exception as exc:
-        logger.warning("Yahoo Finance request failed for %s: %s", ticker, exc)
-        info = {}
-
-    with _cache_lock:
-        _INFO_CACHE[ticker] = {"info": info, "timestamp": now_ts}
-    return info
-
-
 def get_stock_price(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
+    from app import get_db_connection
+    myCursor = get_db_connection().cursor()
+    myCursor.execute("SELECT stock_Price FROM stock_List WHERE ticker_symbol = %s", (ticker,))
+    result = myCursor.fetchone()
+    myCursor.close()
+    return result
 
 
 def get_company_name(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("longName") or info.get("shortName")
+    from app import get_db_connection
+    myCursor = get_db_connection().cursor()
+    myCursor.execute("SELECT stock_Name FROM stock_List WHERE ticker_symbol = %s", (ticker,))
+    result = myCursor.fetchone()
+    myCursor.close()
+    return result
 
 
 def get_price_earnings_ratio(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("trailingPE") or info.get("forwardPE")
+    from app import get_db_connection
+    myCursor = get_db_connection().cursor()
+    myCursor.execute("SELECT pe_ratio FROM stock_List WHERE ticker_symbol = %s", (ticker,))
+    result = myCursor.fetchone()
+    myCursor.close()
+    return result
 
 
 def get_market_cap(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("marketCap")
+    from app import get_db_connection
+    myCursor = get_db_connection().cursor()
+    myCursor.execute("SELECT market_cap FROM stock_List WHERE ticker_symbol = %s", (ticker,))
+    result = myCursor.fetchone()
+    myCursor.close()
+    return result
 
 
 def get_dividend_yield(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("dividendYield")
-
-
-def get_52_week_high(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("fiftyTwoWeekHigh")
-
-
-def get_52_week_low(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("fiftyTwoWeekLow")
-
-
-def get_overview(ticker):
-    info = _get_ticker_info(ticker)
-    return json.dumps(info, indent=4)
-
+    from app import get_db_connection
+    myCursor = get_db_connection().cursor()
+    myCursor.execute("SELECT dividend_yield FROM stock_List WHERE ticker_symbol = %s", (ticker,))
+    result = myCursor.fetchone()
+    myCursor.close()
+    return result
 
 def get_description(ticker):
-    info = _get_ticker_info(ticker)
-    return info.get("longBusinessSummary")
-
+    t = yf.Ticker(ticker)
+    return t.info.get("longBusinessSummary")
 
 def get_global_quote(ticker):
-    info = _get_ticker_info(ticker)
+    info = yf.ticker(ticker)
     try:
         return {
             "open": float(info.get("open")) if info.get("open") else None,
@@ -129,9 +106,16 @@ def get_global_quote(ticker):
 
 
 def get_avg_volume_60d(ticker):
-    info = _get_ticker_info(ticker)
+    info = yf.ticker(ticker)
     return info.get("averageVolume")
 
+def get_52_week_high(ticker):
+    info = yf.ticker(ticker)
+    return info.get("fiftyTwoWeekHigh")
+
+def get_52_week_low(ticker):
+    info = yf.ticker(ticker)
+    return info.get("fiftyTwoWeekLow")
 
 def get_bulk_quotes(tickers):
     unique = sorted({(t or "").strip().upper() for t in tickers if t})
@@ -141,7 +125,7 @@ def get_bulk_quotes(tickers):
     results = {}
 
     def fetch(symbol):
-        info = _get_ticker_info(symbol)
+        info = yf.ticker(symbol)
         return symbol, {
             "price": info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose"),
             "change": info.get("regularMarketChange"),
@@ -156,7 +140,7 @@ def get_bulk_quotes(tickers):
 
 
 def get_stock_snapshot(ticker):
-    info = _get_ticker_info(ticker)
+    info = yf.ticker(ticker)
     if not info:
         return {}
     ticker = (ticker or "").strip().upper()
