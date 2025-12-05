@@ -14,11 +14,8 @@ import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
-<<<<<<< HEAD
 import yfinance as yf
-=======
 import stockUpdate
->>>>>>> parent of 442907e (Revert "Merge branch 'OwenS4'")
 import pandas as pd
 
 # Load    environment variables from .env file

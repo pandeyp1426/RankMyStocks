@@ -3,6 +3,10 @@
   padding: 20px;
   max-width: 500px;
   min-height: 350px;
+  margin: 0 auto; /* Centers the content horizontally */
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Centers content vertically */
 }
 
 .questionnaire-content h2 {
@@ -38,6 +42,9 @@
 .question-page {
   min-height: 150px;
   animation: fadeIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Centers questions vertically */
 }
 
 @keyframes fadeIn {
