@@ -50,33 +50,21 @@ export function PortfolioChart({
   const rawMax = parsed[parsed.length - 1]?.x;
   const isIntradayRange = rawMin && rawMax ? ((rawMax - rawMin) < 36 * 60 * 60 * 1000) : false;
 
-  // Build padded intraday series from midnight to now, filling hourly with last known close
+  // For intraday, only show trading hours (9:30 AM - 4 PM ET)
   const plotData = useMemo(() => {
     if (!parsed.length || !isIntradayRange) return parsed;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const now = new Date();
-
-    const padded = [];
-    let idx = 0;
-    let last = parsed[0];
-
-    for (let t = start.getTime(); t <= now.getTime(); t += 60 * 60 * 1000) {
-      while (idx < parsed.length && parsed[idx].x.getTime() <= t) {
-        last = parsed[idx];
-        idx++;
-      }
-      if (last) {
-        padded.push({
-          x: new Date(t),
-          open: last.close,
-          high: last.close,
-          low: last.close,
-          close: last.close,
-        });
-      }
-    }
-    return padded.length ? padded : parsed;
+    
+    // Filter to only show data during market hours
+    const tradingHoursData = parsed.filter(d => {
+      const hour = d.x.getHours();
+      const minute = d.x.getMinutes();
+      const timeInMinutes = hour * 60 + minute;
+      
+      // Market hours: 9:30 AM (570 minutes) to 4:00 PM (960 minutes)
+      return timeInMinutes >= 570 && timeInMinutes <= 960;
+    });
+    
+    return tradingHoursData.length ? tradingHoursData : parsed;
   }, [parsed, isIntradayRange]);
 
   const yVals = plotData.flatMap(d => [d.high, d.low]);
@@ -86,15 +74,19 @@ export function PortfolioChart({
   const domainMin = useMemo(() => {
     if (!parsed.length) return rawMin;
     if (!isIntradayRange) return rawMin;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    // For intraday, start at 9:30 AM
+    const start = new Date(rawMin);
+    start.setHours(9, 30, 0, 0);
     return start;
   }, [parsed, rawMin, isIntradayRange]);
 
   const domainMax = useMemo(() => {
     if (!parsed.length) return rawMax;
     if (!isIntradayRange) return rawMax;
-    return new Date();
+    // For intraday, end at 4:00 PM
+    const end = new Date(rawMax);
+    end.setHours(16, 0, 0, 0);
+    return end;
   }, [parsed, rawMax, isIntradayRange]);
 
   const xMin = domainMin;
@@ -108,9 +100,22 @@ export function PortfolioChart({
 
   const yScale = y => padding.top + innerH - ((y - yMin) / (yMax - yMin)) * innerH;
 
-  // Better candle width calculation
-  const spacing = innerW / (parsed.length + 1);
-  const candleWidth = Math.min(Math.max(spacing * 0.6, 2), 20);
+  // Better candle width calculation for visibility
+  const numCandles = plotData.length;
+  const totalSpace = innerW * 0.98;
+  const spacing = totalSpace / Math.max(numCandles, 1);
+  
+  // Adjust based on density - more candles = wider fill ratio
+  let fillRatio;
+  if (numCandles > 100) {
+    fillRatio = 0.95; // Fill 95% of space for very dense data
+  } else if (numCandles > 50) {
+    fillRatio = 0.85; // Fill 85% for dense data
+  } else {
+    fillRatio = 0.6; // Original 60% for normal data
+  }
+  
+  const candleWidth = Math.max(spacing * fillRatio, 2); // Minimum 2px
 
   // Line path for line chart
   const linePath = useMemo(() => {
@@ -125,7 +130,7 @@ export function PortfolioChart({
 
   // Area path for line chart (with gradient fill)
   const areaPath = useMemo(() => {
-    if (parsed.length === 0) return "";
+    if (plotData.length === 0) return "";
     const topPoints = plotData.map((d, i) => {
       const x = xScale(d.x.getTime());
       const y = yScale(d.close);
@@ -143,7 +148,7 @@ export function PortfolioChart({
     const mx = clientX - rect.left;
     let best = 0;
     let bestDist = Infinity;
-    const data = chartType === "candle" ? parsed : plotData;
+    const data = chartType === "candle" ? plotData : plotData;
     data.forEach((d, i) => {
       const dist = Math.abs(xScale(d.x.getTime()) - mx);
       if (dist < bestDist) {
@@ -157,7 +162,7 @@ export function PortfolioChart({
   const onMouseMove = e => {
     const idx = findClosestIdx(e.clientX);
     if (idx == null) return;
-    const data = chartType === "candle" ? parsed : plotData;
+    const data = plotData;
     const d = data[idx];
     setHover({ ...d, xPos: xScale(d.x.getTime()), idx });
   };
@@ -213,7 +218,7 @@ export function PortfolioChart({
                 const color = d.close >= d.open ? candleColorUp : candleColorDown;
                 const top = Math.min(yOpen, yClose);
                 const bottom = Math.max(yOpen, yClose);
-                const bodyHeight = Math.max(bottom - top, 1);
+                const bodyHeight = Math.max(bottom - top, 3); // Minimum 3px for visibility
                 
                 return (
                   <g key={i}>
@@ -223,7 +228,7 @@ export function PortfolioChart({
                       x2={x} 
                       y2={yLow} 
                       stroke={color} 
-                      strokeWidth="1.5"
+                      strokeWidth="2"
                     />
                     <rect 
                       x={x - candleWidth / 2} 
@@ -232,7 +237,7 @@ export function PortfolioChart({
                       height={bodyHeight} 
                       fill={color}
                       stroke={color}
-                      strokeWidth="0.5"
+                      strokeWidth="1"
                     />
                   </g>
                 );
@@ -260,21 +265,21 @@ export function PortfolioChart({
                 strokeLinejoin="round"
               />
               {/* Data points */}
-          {plotData.map((d, i) => {
-            const x = xScale(d.x.getTime());
-            const y = yScale(d.close);
-            return (
-              <circle 
-                key={i} 
-                cx={x} 
-                cy={y} 
-                r="3" 
-                fill={candleColorUp}
-                stroke="#fff"
-                strokeWidth="1.5"
-              />
-            );
-          })}
+              {plotData.map((d, i) => {
+                const x = xScale(d.x.getTime());
+                const y = yScale(d.close);
+                return (
+                  <circle 
+                    key={i} 
+                    cx={x} 
+                    cy={y} 
+                    r="3" 
+                    fill={candleColorUp}
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                  />
+                );
+              })}
             </>
           )}
 
@@ -282,12 +287,17 @@ export function PortfolioChart({
           {(() => {
             if (isIntradayRange) {
               const ticks = [];
+              // Show labels from 9:30 AM to 4 PM
               const start = new Date(xMin);
-              start.setHours(0, 0, 0, 0);
+              start.setHours(9, 30, 0, 0);
               const end = new Date(xMax);
+              end.setHours(16, 0, 0, 0);
+              
+              // Create hourly ticks during trading hours
               for (let t = start.getTime(); t <= end.getTime(); t += 60 * 60 * 1000) {
                 ticks.push(new Date(t));
               }
+              
               return ticks.map((d, i) => (
                 <text
                   key={`x-${i}`}
@@ -365,7 +375,10 @@ export function PortfolioChart({
             }}
           >
             <div style={{ fontWeight: "bold", marginBottom: 4, color: tooltipText }}>
-              {hover.x.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              {isIntradayRange 
+                ? hover.x.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+                : hover.x.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              }
             </div>
             {chartType === "candle" ? (
               <>

@@ -28,7 +28,6 @@ const formatRelative = (ts) => {
 };
 
 export function Home() {
-  const MAX_TICKERS_FOR_CHART = 12; // broader coverage while still avoiding hard rate limits
   const { isAuthenticated, isLoading } = useAuth0();
   const activeUserId = useSelector((state) => state.auth.userID);
   const [buttonPopup, setButtonPopup] = useState(false);
@@ -45,7 +44,7 @@ export function Home() {
   const [chartLoading, setChartLoading] = useState(true);
   const [chartUpdatedAt, setChartUpdatedAt] = useState(null);
   const [chartRefreshToken, setChartRefreshToken] = useState(0);
-  const [latestPrices, setLatestPrices] = useState({}); // Store latest price for each stock
+  const [latestPrices, setLatestPrices] = useState({});
   const [chartError, setChartError] = useState("");
 
   function handleClick() {
@@ -132,7 +131,6 @@ export function Home() {
         weekStart.setHours(0, 0, 0, 0);
         periodKey = weekStart.getTime();
       } else {
-        // monthly buckets
         periodKey = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
       }
 
@@ -168,7 +166,6 @@ export function Home() {
 
     switch (timeframe) {
       case "1D": {
-        // last 24h up to now (keeps data even if timezone offsets push timestamps before local midnight)
         const end = now;
         startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         filtered = data.filter((point) => {
@@ -179,23 +176,23 @@ export function Home() {
       }
       case "1W": {
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        aggregateDays = 1; // daily (no aggregation)
+        aggregateDays = 1;
         break;
       }
       case "1M": {
-        startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000); // last 4 weeks daily
+        startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
         aggregateDays = 1;
         break;
       }
       case "1Y": {
         startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-        aggregateDays = 30; // roughly monthly buckets
+        aggregateDays = 30;
         break;
       }
       case "ALL":
       default: {
         startDate = new Date(0);
-        aggregateDays = 30; // monthly buckets
+        aggregateDays = 30;
         break;
       }
     }
@@ -209,7 +206,7 @@ export function Home() {
     return filtered;
   }
 
-  // Fetch candle data for chart - only runs once on mount
+  // Fetch candle data for chart
   useEffect(() => {
     const cacheKey = activeUserId ? `portfolioChart_${activeUserId}` : null;
 
@@ -226,6 +223,12 @@ export function Home() {
         setAllCandleData(parsedCache.allCandleData || []);
         setIntradayData(parsedCache.intradayData || []);
         setChartUpdatedAt(parsedCache.fetchedAt);
+        
+        // Set portfolio value from cache if available
+        if (parsedCache.latestValue && !isNaN(parsedCache.latestValue)) {
+          setTotalPortfolioValue(parsedCache.latestValue);
+        }
+        
         setChartLoading(false);
         return true;
       } catch (err) {
@@ -267,6 +270,7 @@ export function Home() {
         const payload = await resp.json();
         const intraday = Array.isArray(payload.intraday) ? payload.intraday : [];
         const daily = Array.isArray(payload.daily) ? payload.daily : [];
+        
         if (payload.latestValue && !Number.isNaN(payload.latestValue)) {
           setTotalPortfolioValue(payload.latestValue);
         }
@@ -284,11 +288,16 @@ export function Home() {
         if (daily.length || intraday.length) {
           saveCache({
             fetchedAt,
-            latestPrices: latestPrices, // keep existing latest prices
+            latestPrices: payload.latestPrices || {},
             allCandleData: daily,
             intradayData: intraday,
             latestValue: payload.latestValue || null,
           });
+          
+          // Update latestPrices state
+          if (payload.latestPrices) {
+            setLatestPrices(payload.latestPrices);
+          }
         }
       } catch (err) {
         console.error("Error loading portfolio candles:", err);
@@ -406,7 +415,7 @@ export function Home() {
 
           <p className="portfolio-sub"># of Stocks: {totalStocks}</p>
 
-      <div className="portfolio-chart">
+          <div className="portfolio-chart">
             {chartLoading ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>
                 Loading chart data...
