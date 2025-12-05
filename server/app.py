@@ -38,6 +38,37 @@ market_news_cache = {"ts": 0.0, "articles": [], "as_of": None, "error": None}
 CHART_CACHE_TTL = 15 * 60  # seconds (15 minutes)
 chart_cache = {}
 
+
+def get_latest_prices_from_db(tickers):
+    """
+    Bulk fetch latest prices from stock_List for the given tickers.
+    Returns dict ticker -> price.
+    """
+    if not tickers:
+        return {}
+    conn = None
+    cursor = None
+    prices = {}
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        placeholders = ",".join(["%s"] * len(tickers))
+        cursor.execute(
+            f"SELECT ticker_symbol, stock_price FROM stock_List WHERE ticker_symbol IN ({placeholders})",
+            tuple(tickers),
+        )
+        for ticker, price in cursor.fetchall():
+            if ticker and price is not None:
+                prices[ticker.strip().upper()] = float(price)
+    except Exception as exc:
+        print("Error reading latest prices from DB:", exc)
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return prices
+
 from stocks import random_stock, get_stock_price, get_company_name
 from stocks import get_description
 from stocks import search_stocks
@@ -1461,9 +1492,27 @@ def portfolio_chart():
             return jsonify(payload)
 
         data = fetch_yahoo_portfolio_chart(ticker_counts)
+        intraday = data.get("intraday") or []
+        daily = data.get("daily") or []
+
+        # Append latest point using DB snapshot prices
+        latest_prices = get_latest_prices_from_db(list(ticker_counts.keys()))
+        latest_total = None
+        if latest_prices:
+          latest_total = sum((latest_prices.get(t, 0.0) * qty) for t, qty in ticker_counts.items())
+          now_iso = datetime.now(timezone.utc).isoformat()
+          latest_point = {"x": now_iso, "open": latest_total, "high": latest_total, "low": latest_total, "close": latest_total}
+          if intraday:
+            intraday = [p for p in intraday if p.get("x") != latest_point["x"]]
+            intraday.append(latest_point)
+          if daily:
+            daily = [p for p in daily if p.get("x") != latest_point["x"]]
+            daily.append(latest_point)
+
         payload = {
-          "intraday": data.get("intraday") or [],
-          "daily": data.get("daily") or [],
+          "intraday": intraday,
+          "daily": daily,
+          "latestValue": latest_total,
           "fromCache": False,
           "asOf": datetime.now(timezone.utc).isoformat(),
         }

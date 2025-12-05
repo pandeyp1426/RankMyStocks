@@ -29,6 +29,7 @@ export function PortfolioChart({
             low: Number(d.low),
             close: Number(d.close),
           }))
+          .sort((a, b) => a.x - b.x)
       : [];
   }, [candleData]);
 
@@ -45,38 +46,64 @@ export function PortfolioChart({
     );
   }
 
-  const yVals = parsed.flatMap(d => [d.high, d.low]);
+  const rawMin = parsed[0]?.x;
+  const rawMax = parsed[parsed.length - 1]?.x;
+  const isIntradayRange = rawMin && rawMax ? ((rawMax - rawMin) < 36 * 60 * 60 * 1000) : false;
+
+  // Build padded intraday series from midnight to now, filling hourly with last known close
+  const plotData = useMemo(() => {
+    if (!parsed.length || !isIntradayRange) return parsed;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const now = new Date();
+
+    const padded = [];
+    let idx = 0;
+    let last = parsed[0];
+
+    for (let t = start.getTime(); t <= now.getTime(); t += 60 * 60 * 1000) {
+      while (idx < parsed.length && parsed[idx].x.getTime() <= t) {
+        last = parsed[idx];
+        idx++;
+      }
+      if (last) {
+        padded.push({
+          x: new Date(t),
+          open: last.close,
+          high: last.close,
+          low: last.close,
+          close: last.close,
+        });
+      }
+    }
+    return padded.length ? padded : parsed;
+  }, [parsed, isIntradayRange]);
+
+  const yVals = plotData.flatMap(d => [d.high, d.low]);
   const yMin = Math.min(...yVals) * 0.98;
   const yMax = Math.max(...yVals) * 1.02;
-
-  const rawMin = parsed[0].x;
-  const rawMax = parsed[parsed.length - 1].x;
-  const isIntradayRange = (rawMax - rawMin) < 36 * 60 * 60 * 1000;
 
   const domainMin = useMemo(() => {
     if (!parsed.length) return rawMin;
     if (!isIntradayRange) return rawMin;
-    const start = new Date(rawMax);
+    const start = new Date();
     start.setHours(0, 0, 0, 0);
     return start;
-  }, [parsed, rawMin, rawMax, isIntradayRange]);
+  }, [parsed, rawMin, isIntradayRange]);
 
   const domainMax = useMemo(() => {
     if (!parsed.length) return rawMax;
     if (!isIntradayRange) return rawMax;
-    const now = new Date();
-    return now > rawMax ? now : rawMax;
+    return new Date();
   }, [parsed, rawMax, isIntradayRange]);
 
   const xMin = domainMin;
   const xMax = domainMax;
   const xSpanMs = xMax - xMin;
 
-  // Improved x-scale with proper spacing from edges
-  const xScale = (x, index) => {
-    const totalCandles = parsed.length;
-    const spacing = innerW / (totalCandles + 1);
-    return padding.left + spacing * (index + 1);
+  const xScale = (xMs) => {
+    const span = Math.max(xSpanMs, 1);
+    return padding.left + ((xMs - xMin.getTime()) / span) * innerW;
   };
 
   const yScale = y => padding.top + innerH - ((y - yMin) / (yMax - yMin)) * innerH;
@@ -87,27 +114,27 @@ export function PortfolioChart({
 
   // Line path for line chart
   const linePath = useMemo(() => {
-    if (parsed.length === 0) return "";
-    const points = parsed.map((d, i) => {
-      const x = xScale(d.x, i);
+    if (plotData.length === 0) return "";
+    const points = plotData.map((d, i) => {
+      const x = xScale(d.x.getTime());
       const y = yScale(d.close);
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
     return points;
-  }, [parsed, innerW, innerH]);
+  }, [plotData, innerW, innerH, xSpanMs]);
 
   // Area path for line chart (with gradient fill)
   const areaPath = useMemo(() => {
     if (parsed.length === 0) return "";
-    const topPoints = parsed.map((d, i) => {
-      const x = xScale(d.x, i);
+    const topPoints = plotData.map((d, i) => {
+      const x = xScale(d.x.getTime());
       const y = yScale(d.close);
       return `${x} ${y}`;
     }).join(' L ');
-    
-    const bottomPoints = `L ${xScale(parsed[parsed.length - 1].x, parsed.length - 1)} ${height - padding.bottom} L ${xScale(parsed[0].x, 0)} ${height - padding.bottom} Z`;
+
+    const bottomPoints = `L ${xScale(plotData[plotData.length - 1].x.getTime())} ${height - padding.bottom} L ${xScale(plotData[0].x.getTime())} ${height - padding.bottom} Z`;
     return `M ${topPoints} ${bottomPoints}`;
-  }, [parsed, innerW, innerH]);
+  }, [plotData, innerW, innerH, xSpanMs]);
 
   // Hover
   function findClosestIdx(clientX) {
@@ -116,8 +143,9 @@ export function PortfolioChart({
     const mx = clientX - rect.left;
     let best = 0;
     let bestDist = Infinity;
-    parsed.forEach((d, i) => {
-      const dist = Math.abs(xScale(d.x, i) - mx);
+    const data = chartType === "candle" ? parsed : plotData;
+    data.forEach((d, i) => {
+      const dist = Math.abs(xScale(d.x.getTime()) - mx);
       if (dist < bestDist) {
         best = i;
         bestDist = dist;
@@ -129,8 +157,9 @@ export function PortfolioChart({
   const onMouseMove = e => {
     const idx = findClosestIdx(e.clientX);
     if (idx == null) return;
-    const d = parsed[idx];
-    setHover({ ...d, xPos: xScale(d.x, idx), idx });
+    const data = chartType === "candle" ? parsed : plotData;
+    const d = data[idx];
+    setHover({ ...d, xPos: xScale(d.x.getTime()), idx });
   };
 
   const onLeave = () => setHover(null);
@@ -175,8 +204,8 @@ export function PortfolioChart({
           {chartType === "candle" ? (
             // Candle chart
             <>
-              {parsed.map((d, i) => {
-                const x = xScale(d.x, i);
+              {plotData.map((d, i) => {
+                const x = xScale(d.x.getTime());
                 const yOpen = yScale(d.open);
                 const yClose = yScale(d.close);
                 const yHigh = yScale(d.high);
@@ -231,49 +260,71 @@ export function PortfolioChart({
                 strokeLinejoin="round"
               />
               {/* Data points */}
-              {parsed.map((d, i) => {
-                const x = xScale(d.x, i);
-                const y = yScale(d.close);
-                return (
-                  <circle 
-                    key={i} 
-                    cx={x} 
-                    cy={y} 
-                    r="3" 
-                    fill={candleColorUp}
-                    stroke="#fff"
-                    strokeWidth="1.5"
-                  />
-                );
-              })}
+          {plotData.map((d, i) => {
+            const x = xScale(d.x.getTime());
+            const y = yScale(d.close);
+            return (
+              <circle 
+                key={i} 
+                cx={x} 
+                cy={y} 
+                r="3" 
+                fill={candleColorUp}
+                stroke="#fff"
+                strokeWidth="1.5"
+              />
+            );
+          })}
             </>
           )}
 
-          {/* X-axis labels (dates) */}
-          {parsed.map((d, i) => {
-            const labelInterval = Math.max(Math.ceil(parsed.length / 8), 1);
-            if (i % labelInterval !== 0 && i !== parsed.length - 1) return null;
-            const x = xScale(d.x, i);
+          {/* X-axis labels (dates/times) */}
+          {(() => {
+            if (isIntradayRange) {
+              const ticks = [];
+              const start = new Date(xMin);
+              start.setHours(0, 0, 0, 0);
+              const end = new Date(xMax);
+              for (let t = start.getTime(); t <= end.getTime(); t += 60 * 60 * 1000) {
+                ticks.push(new Date(t));
+              }
+              return ticks.map((d, i) => (
+                <text
+                  key={`x-${i}`}
+                  x={xScale(d.getTime())}
+                  y={height - padding.bottom + 20}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fill={labelColor}
+                  fontFamily="sans-serif"
+                >
+                  {d.toLocaleTimeString("en-US", { hour: "numeric", hour12: true })}
+                </text>
+              ));
+            }
+            const labelInterval = Math.max(Math.ceil(plotData.length / 8), 1);
             const isLongRange = xSpanMs > 90 * 24 * 60 * 60 * 1000; // > ~3 months
-            const label = isIntradayRange
-              ? d.x.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-              : isLongRange
-              ? d.x.toLocaleDateString("en-US", { month: "short" })
-              : d.x.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-            return (
-              <text 
-                key={`x-${i}`} 
-                x={x} 
-                y={height - padding.bottom + 20} 
-                textAnchor="middle" 
-                fontSize="11" 
-                fill={labelColor}
-                fontFamily="sans-serif"
-              >
-                {label}
-              </text>
-            );
-          })}
+            return plotData.map((d, i) => {
+              if (i % labelInterval !== 0 && i !== plotData.length - 1) return null;
+              const x = xScale(d.x.getTime());
+              const label = isLongRange
+                ? d.x.toLocaleDateString("en-US", { month: "short" })
+                : d.x.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              return (
+                <text 
+                  key={`x-${i}`} 
+                  x={x} 
+                  y={height - padding.bottom + 20} 
+                  textAnchor="middle" 
+                  fontSize="11" 
+                  fill={labelColor}
+                  fontFamily="sans-serif"
+                >
+                  {label}
+                </text>
+              );
+            });
+          })()}
 
           {/* Hover line */}
           {hover && (

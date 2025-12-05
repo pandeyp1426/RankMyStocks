@@ -267,6 +267,9 @@ export function Home() {
         const payload = await resp.json();
         const intraday = Array.isArray(payload.intraday) ? payload.intraday : [];
         const daily = Array.isArray(payload.daily) ? payload.daily : [];
+        if (payload.latestValue && !Number.isNaN(payload.latestValue)) {
+          setTotalPortfolioValue(payload.latestValue);
+        }
 
         if (!intraday.length && !daily.length) {
           setChartError(payload.error || "No chart data yet. Refresh in a minute.");
@@ -284,6 +287,7 @@ export function Home() {
             latestPrices: latestPrices, // keep existing latest prices
             allCandleData: daily,
             intradayData: intraday,
+            latestValue: payload.latestValue || null,
           });
         }
       } catch (err) {
