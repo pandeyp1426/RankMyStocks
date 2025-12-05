@@ -160,6 +160,34 @@
     0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
+.navbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.theme-toggle {
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffe6a7;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-1px);
+  color: #fff1c1;
+}
+
+.theme-toggle__icon {
+  width: 26px;
+  height: 26px;
+}
+
 .navbar-link {
   position: relative;
   color: #e8ecff;
@@ -410,4 +438,40 @@ body.theme-light .theme-toggle {
 body.theme-light .theme-toggle:hover {
   color: #312e81;
   background: rgba(17, 24, 39, 0.08);
+}
+
+body.theme-light .navbar {
+  background: linear-gradient(90deg, #eef2ff, #f5f3ff);
+  box-shadow: 0 12px 32px rgba(148, 163, 184, 0.35);
+  color: #111c3c;
+}
+
+body.theme-light .navbar-title,
+body.theme-light .navbar-link {
+  color: #1f2a44;
+}
+
+body.theme-light .navbar-link:hover {
+  color: #4338ca;
+}
+
+body.theme-light .login-btn,
+body.theme-light .logout-btn {
+  background-color: #4338ca;
+  border-color: rgba(67, 56, 202, 0.85);
+  color: #f8fafc;
+}
+
+body.theme-light .login-btn:hover,
+body.theme-light .logout-btn:hover {
+  background-color: #3730a3;
+  border-color: #3730a3;
+}
+
+body.theme-light .theme-toggle {
+  color: #4338ca;
+}
+
+body.theme-light .theme-toggle:hover {
+  color: #312e81;
 }

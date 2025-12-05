@@ -277,6 +277,7 @@ def aggregate_yahoo_bars(df, ticker_counts):
 #  Routes
 @app.route("/")
 def home():
+    stockUpdate.update_stock_data()
     return "Welcome to RankMyStocks API!"
 
 
