@@ -10,6 +10,7 @@ import appPreview from "../../assets/img/logo.png";
 import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
 import { StockSearch } from "../../Components/StockSearch/stockSearch.jsx";
 import { PortfolioChart } from "../../Components/PortfolioChart/portfolioChart.jsx";
+import { apiUrl } from "../../api";
 
 const CHART_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -66,7 +67,7 @@ export function Home() {
       }
       
       try {
-        const response = await fetch(`http://127.0.0.1:5002/api/portfolios?userId=${encodeURIComponent(activeUserId)}`);
+        const response = await fetch(apiUrl(`/portfolios?userId=${encodeURIComponent(activeUserId)}`));
         const userPortfolios = await response.json();
 
         console.log("Active user ID:", activeUserId);
@@ -246,16 +247,10 @@ export function Home() {
       }
     };
 
-    async function loadPortfolioCandles() {
+    async function fetchChartData() {
       if (isLoading) return;
       if (!isAuthenticated || !activeUserId) {
         setChartLoading(false);
-        return;
-      }
-
-      // Use cache if fresh
-      if (tryLoadCache()) {
-        console.log("Loaded portfolio chart from cache");
         return;
       }
 
@@ -263,7 +258,8 @@ export function Home() {
       setChartError("");
 
       try {
-        const resp = await fetch(`http://127.0.0.1:5002/api/portfolio-chart?userId=${encodeURIComponent(activeUserId)}`);
+        const ts = Date.now();
+        const resp = await fetch(apiUrl(`/portfolio-chart?userId=${encodeURIComponent(activeUserId)}&skipCache=1&ts=${ts}`));
         if (!resp.ok) {
           throw new Error(`Chart request failed: ${resp.status}`);
         }
@@ -302,12 +298,15 @@ export function Home() {
       } catch (err) {
         console.error("Error loading portfolio candles:", err);
         setChartError("Unable to load chart data right now.");
+        // fallback to cache if available
+        tryLoadCache();
       } finally {
         setChartLoading(false);
       }
     }
 
-    loadPortfolioCandles();
+    // Always fetch fresh; cache is only used as a fallback
+    fetchChartData();
   }, [isAuthenticated, isLoading, activeUserId, chartRefreshToken]);
 
   // Update displayed data when timeframe changes or data loads

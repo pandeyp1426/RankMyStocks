@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
 import axios from "axios";
 import "./questionair.css";
+import { apiUrl } from "../../api";
 
 axios.defaults.withCredentials = true;
 
@@ -26,8 +27,6 @@ export function Questionair() {
   const [loading, setLoading] = useState(false);
   const didFetchRef = useRef(false);
 
-   // 👇 API URL comes from .env (client/.env)
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
 
   // Resolve the current user id from Redux or Auth0
   const resolvedUserId = activeUserId || user?.sub || null;
@@ -45,7 +44,7 @@ export function Questionair() {
 
   async function fetchStockInfo(ticker) {
     try {
-      const res = await fetch(`${API_URL}/api/stock-info?ticker=${encodeURIComponent(ticker)}`);
+      const res = await fetch(apiUrl(`/stock-info?ticker=${encodeURIComponent(ticker)}`));
       if (!res.ok) {
         throw new Error(`Stock info lookup failed (${res.status})`);
       }
@@ -75,7 +74,7 @@ useEffect(() => {
   //function to send questionQTY, portfolio name, and other questionnaire answers to backend
   const sendQuestionQTY = async () => {
     try {
-      const response = await axios.post(`${API_URL}/init`, {
+      const response = await axios.post(apiUrl("/init"), {
         portfolioName: portfolioName,
         questionQTY: questionQTY,
         answers: answers,
@@ -95,7 +94,7 @@ useEffect(() => {
   //function to get next pair from backend
   const getNextPair = async () => {
     try {
-      const response = await axios.get(`${API_URL}/next`);
+      const response = await axios.get(apiUrl("/next"));
       return response.data;
 
     } catch (error) {
@@ -118,7 +117,7 @@ const fetchStockData = async () => {
   setError(null);
 
   try {
-    const response = await axios.get(`${API_URL}/api/get-stock-data`, {
+    const response = await axios.get(apiUrl("/get-stock-data"), {
       withCredentials: true
     });
     
@@ -161,7 +160,7 @@ const fetchStockData = async () => {
 
 const sendStockPick = async (stock) => {
     try {
-      const response = await axios.post(`${API_URL}/pick`, {
+      const response = await axios.post(apiUrl("/pick"), {
         stockPick: stock
     },
     {
@@ -187,7 +186,7 @@ const sendStockPick = async (stock) => {
       //fetchTwoStocks();
       didFetchRef.current = true;
     }
-  }, [API_URL]);
+  }, []);
 
   // when user picks a stock
   const handlePick = async (stock) => {
@@ -224,7 +223,7 @@ const sendStockPick = async (stock) => {
 
   const reroll = async () => {
     try {
-      await axios.post(`${API_URL}/reroll`, {
+      await axios.post(apiUrl("/reroll"), {
         withCredentials: true,
         reroll: true
       });
@@ -283,7 +282,7 @@ const sendStockPick = async (stock) => {
     }));
 
     try {
-      const res = await fetch(`${API_URL}/api/portfolios`, {
+      const res = await fetch(apiUrl("/portfolios"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

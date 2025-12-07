@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import "./portfolioRankings.css";
+import { apiUrl } from "../../api";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
 const SORT_MODES = [
   { id: "value", label: "Top Value" },
   { id: "stocks", label: "Most Stocks" },
@@ -32,7 +32,7 @@ export function PortfolioRankings() {
         const query = scope === "mine" && activeUserId
           ? `?userId=${encodeURIComponent(activeUserId)}`
           : "";
-        const url = `${API_URL}/api/portfolio-leaderboard${query}`;
+        const url = apiUrl(`/portfolio-leaderboard${query}`);
         const res = await fetch(url);
         const data = await res.json();
         if (!ignore) {
@@ -51,7 +51,7 @@ export function PortfolioRankings() {
     return () => {
       ignore = true;
     };
-  }, [API_URL, scope]);
+  }, [scope, activeUserId]);
 
   const sorted = useMemo(() => {
     const list = [...leaderboard];

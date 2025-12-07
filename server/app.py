@@ -1,15 +1,12 @@
 from flask import Flask, session, jsonify, request
 import requests
 import mysql.connector
-import urllib.request
 import os
 import random
 import time
-import csv
 from datetime import datetime, timedelta, timezone
 from flask_cors import CORS
 from dotenv import load_dotenv
-import urllib.parse
 import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -393,6 +390,7 @@ def filter_list(answers, questionQTY):
     
 # ---- Initialize Session ----
 
+@app.route("/api/init", methods=["POST"])
 @app.route("/init", methods=["POST"])
 def initialize():
     print("=" * 50)
@@ -431,6 +429,7 @@ def initialize():
     return response
 
 # ---- Get Next Stock Pair ----
+@app.route("/api/next", methods=["GET"])
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     print("=" * 50)
@@ -471,6 +470,7 @@ def get_next_pair():
         return jsonify({"error": str(e)}), 500
 
 #route to reroll stock pair
+@app.route("/api/reroll", methods =["POST"])
 @app.route("/reroll", methods =["POST"])
 def reroll():
     print("=" * 50)
@@ -491,6 +491,7 @@ def reroll():
 
 
 # ---- Pick Stock ----
+@app.route("/api/pick", methods=["POST"])
 @app.route("/pick", methods=["POST"])
 def pick_stock():
     print("=" * 50)
@@ -1515,10 +1516,11 @@ def portfolio_chart():
         if not ticker_counts:
             return jsonify({"intraday": [], "daily": [], "count": 0})
 
+        skip_cache = request.args.get("skipCache") == "1"
         cache_key = tuple(sorted(ticker_counts.items()))
         cached = chart_cache.get(cache_key)
         now_ts = time.time()
-        if cached and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
+        if cached and not skip_cache and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
             payload = cached["data"]
             payload["fromCache"] = True
             payload["asOf"] = cached.get("asOf")
@@ -1549,6 +1551,7 @@ def portfolio_chart():
           "fromCache": False,
           "asOf": datetime.now(timezone.utc).isoformat(),
         }
+        # Refresh cache even when skipCache is used so future non-forced reads see the latest
         chart_cache[cache_key] = {"ts": now_ts, "data": payload, "asOf": payload["asOf"]}
         return jsonify(payload)
     except Exception as exc:

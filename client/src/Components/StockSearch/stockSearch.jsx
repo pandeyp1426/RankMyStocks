@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Popup } from "../CreatePopUp/popup.jsx";
+import { apiUrl } from "../../api";
 import "./stockSearch.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
 
 // StockSearch: lets users search by company name or ticker,
 // then view a concise description of the selected stock.
@@ -26,7 +25,7 @@ export function StockSearch() {
       }
       try {
         const res = await fetch(
-          `${API_URL}/api/search?q=${encodeURIComponent(debouncedQuery)}`
+          apiUrl(`/search?q=${encodeURIComponent(debouncedQuery)}`)
         );
         const data = await res.json();
         if (!active) return;
@@ -41,7 +40,7 @@ export function StockSearch() {
       active = false;
       clearTimeout(t);
     };
-  }, [debouncedQuery, API_URL]);
+  }, [debouncedQuery]);
 
   async function fetchSnapshot(ticker) {
     const symbol = (ticker || "").trim().toUpperCase();
@@ -50,7 +49,7 @@ export function StockSearch() {
     setError("");
     setResult(null);
     try {
-      const res = await fetch(`${API_URL}/api/stock-info?ticker=${encodeURIComponent(symbol)}`);
+      const res = await fetch(apiUrl(`/stock-info?ticker=${encodeURIComponent(symbol)}`));
       const data = await res.json();
       if (!res.ok || data?.error) {
         throw new Error(data?.error || "No data found.");

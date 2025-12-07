@@ -7,6 +7,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setAuthData, clearAuthData } from "./authSlicer";
+import { apiUrl } from "../../api";
 
 const SunIcon = () => (
   <svg
@@ -51,7 +52,6 @@ export function Navbar({ theme = "dark", onToggleTheme }) {
   const { loginWithRedirect, logout, isAuthenticated, user, getAccessTokenSilently } = useAuth0();
   const dispatch = useDispatch();
   const location = useLocation();
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
 //needs to be looked at more later, will store assuming we get data 
 //but allows user to login regardless of auth0 sending us user id and
 //will likely lead to problems later
@@ -74,7 +74,7 @@ const userID = useSelector((state) => state.auth.userID);
             })
           );
 
-          const response = await axios.post(`${API_URL}/api/user_ID`, { user_ID: id });
+          const response = await axios.post(apiUrl("/user_ID"), { user_ID: id });
           console.log(response.data);
 
         } catch (error) {
