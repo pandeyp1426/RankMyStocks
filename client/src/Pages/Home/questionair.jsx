@@ -94,7 +94,9 @@ useEffect(() => {
   //function to get next pair from backend
   const getNextPair = async () => {
     try {
-      const response = await axios.get(apiUrl("/next"));
+      const response = await axios.get(apiUrl("/next"), {
+        withCredentials: true,
+      });
       return response.data;
 
     } catch (error) {
@@ -223,10 +225,11 @@ const sendStockPick = async (stock) => {
 
   const reroll = async () => {
     try {
-      await axios.post(apiUrl("/reroll"), {
-        withCredentials: true,
-        reroll: true
-      });
+      await axios.post(
+        apiUrl("/reroll"),
+        { reroll: true },
+        { withCredentials: true }
+      );
       console.log('Reroll successful');
     } catch (error) {
       console.error('Error calling reroll:', error);
