@@ -44,6 +44,14 @@ def get_db_connection():
         database=os.getenv("DB_NAME"),
         port=int(os.getenv("DB_PORT", 3306))
     )
+    
+def safe_float(val, default=None):
+    try:
+        if val in (None, "", "None"):
+            return default
+        return float(val)
+    except (TypeError, ValueError):
+        return default
 
 #  Routes
 @app.route("/")
@@ -130,10 +138,13 @@ def get_stock_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-#creates list of stocks based on useres preferences
+#returns filtered list of tickers based on user preferences
 def filter_list(answers, questionQTY):
-    #first filter by industry
+    #user preferences from questionnaire
     industry = answers.get("industrySector", "any")
+    marketCap = answers.get("marketCap", "any")
+    peRatio = answers.get("peRatio", "any")
+    dividend = answers.get("dividend", "any")
     
     #data frame = all stocks from csv
     df = pd.read_csv("ticker_list.csv", names=['ticker', 'name', 'country', 'sectors', 'industry'])
@@ -143,17 +154,111 @@ def filter_list(answers, questionQTY):
     if(industry != "any"):
         #filter by industry sector
         print("Filtered DF by industry:", industry)
-        #filters by industry sector
         df = df[df.iloc[:, 3].str.lower() == industry.lower()]
         print("Filtered DF:", df)
         filtered_stocks = df['ticker'].tolist()
         print("Filtered Stocks List:", filtered_stocks)
         
-    #only filtered by industry for now
-    random_filtered_tickers = random.sample(filtered_stocks, questionQTY * 2)
+    #list of tickers filtered by sector
+    filtered_tickers = df['ticker'].tolist()
     
-    return random_filtered_tickers
+    # If no additional filters, return random sample
+    if (marketCap == "any" and peRatio == "any" and dividend == "any"):
+        print("No additional filters, returning random sample")
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
     
+    # Further filter based on marketCap, peRatio, dividend
+    # query databse for stock metrics
+    conn = None
+    cursor = None
+    final_stocks = []
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Build dynamic SQL query based on filters
+        placeholders = ",".join(["%s"] * len(filtered_tickers))
+        query = f"""
+            SELECT 
+                ticker_symbol,
+                stock_price,
+                market_cap,
+                pe_ratio,
+                dividend_yield
+            FROM stock_List 
+            WHERE ticker_symbol IN ({placeholders})
+        """
+        
+        # Add filter conditions
+        conditions = []
+        params = list(filtered_tickers)
+        
+        # Market Cap Filter - matching frontend options exactly
+        if marketCap == "mega":
+            conditions.append("market_cap >= 200000000000")  # $200B+
+        elif marketCap == "large":
+            conditions.append("market_cap >= 10000000000 AND market_cap < 200000000000")  # $10B - $200B
+        elif marketCap == "medium":
+            conditions.append("market_cap >= 2000000000 AND market_cap < 10000000000")  # $2B - $10B
+        elif marketCap == "small":
+            conditions.append("market_cap >= 300000000 AND market_cap < 2000000000")  # $300M - $2B
+        elif marketCap == "micro":
+            conditions.append("market_cap < 300000000")  # Under $300M
+            
+        # P/E Ratio Filter - matching frontend options
+        if peRatio == "low":
+            conditions.append("pe_ratio < 15 AND pe_ratio > 0")
+        elif peRatio == "medium":
+            conditions.append("pe_ratio >= 15 AND pe_ratio < 25")
+        elif peRatio == "high":
+            conditions.append("pe_ratio >= 25")
+    
+        # Dividend Filter - matching frontend options
+        if dividend == "yes":
+            conditions.append("dividend_yield > 0")
+        elif dividend == "no":
+            conditions.append("(dividend_yield IS NULL OR dividend_yield = 0)")
+        # "any" means no filter
+        
+        # Append conditions to query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        
+        print(f"Executing query with {len(conditions)} additional filters")
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+                
+        print(f"Database returned {len(rows)} matching stocks")
+        
+        # Process results
+        for row in rows:
+            ticker = row.get('ticker_symbol')
+            if ticker:
+                final_stocks.append(ticker.strip().upper())
+
+                
+    except Exception as e:
+        print(f"Database error during filtering: {e}")
+        # Fallback to random selection from industry filter
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+            
+    # If no stocks match all filters, fallback to industry filter only
+    if not final_stocks:
+        print("No stocks match all filters, using industry filter only")
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+        
+    # Limit to questionQTY * 2 stocks for pairing
+    final_stocks = random.sample(final_stocks, min(questionQTY * 2, len(final_stocks)))
+    
+    return final_stocks
+
+
 # ---- Initialize Session ----
 
 @app.route("/init", methods=["POST"])
