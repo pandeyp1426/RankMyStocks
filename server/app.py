@@ -390,6 +390,7 @@ def filter_list(answers, questionQTY):
     
 # ---- Initialize Session ----
 
+@app.route("/api/init", methods=["POST"])
 @app.route("/init", methods=["POST"])
 def initialize():
     print("=" * 50)
@@ -428,6 +429,7 @@ def initialize():
     return response
 
 # ---- Get Next Stock Pair ----
+@app.route("/api/next", methods=["GET"])
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     print("=" * 50)
@@ -468,6 +470,7 @@ def get_next_pair():
         return jsonify({"error": str(e)}), 500
 
 #route to reroll stock pair
+@app.route("/api/reroll", methods =["POST"])
 @app.route("/reroll", methods =["POST"])
 def reroll():
     print("=" * 50)
@@ -488,6 +491,7 @@ def reroll():
 
 
 # ---- Pick Stock ----
+@app.route("/api/pick", methods=["POST"])
 @app.route("/pick", methods=["POST"])
 def pick_stock():
     print("=" * 50)

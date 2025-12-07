@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import "./myPortfolios.css";
 import { Popup } from "../../Components/CreatePopUp/popup.jsx";
 import deleteIcon from "../../assets/img/delete.png";
+import { apiUrl } from "../../api";
 
 // Converts any date format to a safe numeric timestamp
 function toTimestamp(dateString) {
@@ -75,9 +76,6 @@ export function MyPortfolios() {
   const [nameDraft, setNameDraft] = useState("");
   const [renamePending, setRenamePending] = useState(false);
 
-
-  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5002";
-
   // Fetch portfolios from backend
   useEffect(() => {
     if (!activeUserId) {
@@ -86,7 +84,7 @@ export function MyPortfolios() {
       setLoading(false);
       return;
     }
-    const url = `${API_URL}/api/portfolios?userId=${encodeURIComponent(activeUserId)}`;
+    const url = apiUrl(`/portfolios?userId=${encodeURIComponent(activeUserId)}`);
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch portfolios");
@@ -103,7 +101,7 @@ export function MyPortfolios() {
         setError(err.message);
         setLoading(false);
       });
-  }, [API_URL, activeUserId]);
+  }, [activeUserId]);
 
   // Sort portfolios by selected option
   function sortPortfolios(list, option, asc) {
@@ -178,8 +176,8 @@ export function MyPortfolios() {
     setDigest(null);
     try {
       const [sres, dres] = await Promise.all([
-        fetch(`${API_URL}/api/stock-stats?ticker=${encodeURIComponent(ticker)}`),
-        fetch(`${API_URL}/api/daily-digest?ticker=${encodeURIComponent(ticker)}`)
+        fetch(apiUrl(`/stock-stats?ticker=${encodeURIComponent(ticker)}`)),
+        fetch(apiUrl(`/daily-digest?ticker=${encodeURIComponent(ticker)}`))
       ]);
       const sdata = await sres.json();
       const ddata = await dres.json();
@@ -208,7 +206,7 @@ export function MyPortfolios() {
   // Handle portfolio deletion
   async function handleDelete(id) {
     try {
-      const res = await fetch(`${API_URL}/api/delete-portfolio/${id}`, {
+      const res = await fetch(apiUrl(`/delete-portfolio/${id}`), {
         method: "DELETE",
       });
       const data = await res.json();
@@ -265,7 +263,7 @@ export function MyPortfolios() {
 
     try {
       setRenamePending(true);
-      const res = await fetch(`${API_URL}/api/portfolios/${portfolio.id}`, {
+      const res = await fetch(apiUrl(`/portfolios/${portfolio.id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),

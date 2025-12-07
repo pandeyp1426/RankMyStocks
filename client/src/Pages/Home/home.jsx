@@ -10,6 +10,7 @@ import appPreview from "../../assets/img/logo.png";
 import { NameCheck } from "../../Components/CreatePopUp/nameCheck.jsx"; 
 import { StockSearch } from "../../Components/StockSearch/stockSearch.jsx";
 import { PortfolioChart } from "../../Components/PortfolioChart/portfolioChart.jsx";
+import { apiUrl } from "../../api";
 
 const CHART_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -66,7 +67,7 @@ export function Home() {
       }
       
       try {
-        const response = await fetch(`http://127.0.0.1:5002/api/portfolios?userId=${encodeURIComponent(activeUserId)}`);
+        const response = await fetch(apiUrl(`/portfolios?userId=${encodeURIComponent(activeUserId)}`));
         const userPortfolios = await response.json();
 
         console.log("Active user ID:", activeUserId);
@@ -258,7 +259,7 @@ export function Home() {
 
       try {
         const ts = Date.now();
-        const resp = await fetch(`http://127.0.0.1:5002/api/portfolio-chart?userId=${encodeURIComponent(activeUserId)}&skipCache=1&ts=${ts}`);
+        const resp = await fetch(apiUrl(`/portfolio-chart?userId=${encodeURIComponent(activeUserId)}&skipCache=1&ts=${ts}`));
         if (!resp.ok) {
           throw new Error(`Chart request failed: ${resp.status}`);
         }
