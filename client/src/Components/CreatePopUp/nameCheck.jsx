@@ -1,6 +1,6 @@
 import { useSelector } from "react-redux";
 import { useState } from "react";
-import { Popup } from "./Popup";
+import { Popup } from "./popup";
 import { QuestionnaireContent } from "./questionnaireContent.jsx";
 import "./nameCheck.css";
 
