@@ -10,16 +10,17 @@ export function QuestionnaireContent({ onComplete }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const [answers, setAnswers] = useState({
+  const neutralAnswers = {
     investmentHorizon: "",
     experienceLevel: "",
     primaryGoal: "",
-    industrySector: "",
-    marketCap: "",
-    peRatio: "",
-    dividends: "",
-    analystRating: ""
-  });
+    industrySector: "any",
+    marketCap: "any",
+    peRatio: "any",
+    dividends: "either",
+    analystRating: "any"
+  };
+  const [answers, setAnswers] = useState({ ...neutralAnswers });
 
   const totalPages = 5; // Number of questions/pages
 
@@ -48,6 +49,12 @@ export function QuestionnaireContent({ onComplete }) {
     // Dispatch answers to Redux store
     dispatch(setQuestionnaireAnswers(answers));
 
+    navigate("/questionair");
+  };
+
+  const handleSkip = (e) => {
+    e.preventDefault();
+    dispatch(setQuestionnaireAnswers(neutralAnswers));
     navigate("/questionair");
   };
 
@@ -257,6 +264,14 @@ export function QuestionnaireContent({ onComplete }) {
             className="nav-btn prev-btn"
           >
             Previous
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSkip}
+            className="nav-btn skip-btn"
+          >
+            Skip
           </button>
 
           {currentPage < totalPages ? (

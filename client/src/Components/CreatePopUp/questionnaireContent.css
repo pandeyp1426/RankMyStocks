@@ -141,6 +141,16 @@
   background-color: #45a049;
 }
 
+.skip-btn {
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #4CAF50;
+}
+
+.skip-btn:hover {
+  background-color: rgba(76, 175, 80, 0.15);
+}
+
 .nav-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
