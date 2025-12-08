@@ -377,63 +377,38 @@ def get_stock_data():
 
 #returns filtered list of tickers based on user preferences
 def filter_list(answers, questionQTY):
-    """Return a list of tickers based on questionnaire answers without throwing."""
-    answers = answers or {}
-    try:
-        qty = int(questionQTY or 0)
-    except (TypeError, ValueError):
-        qty = 0
-    qty = max(qty, 1)
-
-    try:
-        df = pd.read_csv(
-            "ticker_list.csv",
-            names=["ticker", "name", "country", "sectors", "industry"]
-        )
-    except Exception as exc:
-        print("Error reading ticker_list.csv:", exc)
-        return []
-
-    industry = (answers.get("industrySector") or "any").strip().lower()
-    filtered_df = df
-    if industry != "any":
+    #user preferences from questionnaire
+    industry = answers.get("industrySector", "any")
+    marketCap = answers.get("marketCap", "any")
+    peRatio = answers.get("peRatio", "any")
+    dividend = answers.get("dividend", "any")
+    
+    #data frame = all stocks from csv
+    df = pd.read_csv("ticker_list.csv", names=['ticker', 'name', 'country', 'sectors', 'industry'])
+    
+    #if industry is any return full df otherwise return filtered df
+    #filter by industry
+    if(industry != "any"):
+        #filter by industry sector
         print("Filtered DF by industry:", industry)
-        filtered_df = df[df.iloc[:, 3].str.lower() == industry]
-        print("Filtered DF:", filtered_df)
-
-    filtered_stocks = (
-        filtered_df["ticker"]
-        .dropna()
-        .astype(str)
-        .str.upper()
-        .tolist()
-    )
-
-    # If filter produced too few, fall back to the full list.
-    if len(filtered_stocks) < 2:
-        fallback = (
-            df["ticker"]
-            .dropna()
-            .astype(str)
-            .str.upper()
-            .tolist()
-        )
-        if fallback:
-            filtered_stocks = fallback
-
-    if not filtered_stocks:
-        return []
-
-    needed = qty * 2
-    if len(filtered_stocks) >= needed:
-        return random.sample(filtered_stocks, needed)
-
-    # If we do not have enough unique tickers, allow repeats to fill the list.
-    picks = filtered_stocks.copy()
-    while len(picks) < needed:
-        picks.append(random.choice(filtered_stocks))
-    random.shuffle(picks)
-    return picks
+        df = df[df.iloc[:, 3].str.lower() == industry.lower()]
+        print("Filtered DF:", df)
+        filtered_stocks = df['ticker'].tolist()
+        print("Filtered Stocks List:", filtered_stocks)
+        
+    #list of tickers filtered by sector
+    filtered_tickers = df['ticker'].tolist()
+    
+    # If no additional filters, return random sample
+    if (marketCap == "any" and peRatio == "any" and dividend == "any"):
+        print("No additional filters, returning random sample")
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+    
+    # Further filter based on marketCap, peRatio, dividend
+    # query databse for stock metrics
+    conn = None
+    cursor = None
+    final_stocks = []
     
     try:
         conn = get_db_connection()
@@ -519,7 +494,6 @@ def filter_list(answers, questionQTY):
     final_stocks = random.sample(final_stocks, min(questionQTY * 2, len(final_stocks)))
     
     return final_stocks
-
 
 # ---- Initialize Session ----
 
