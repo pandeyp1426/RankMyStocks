@@ -88,17 +88,13 @@ useEffect(() => {
     return response.data;
   } catch (err) {
     console.error("Error sending questionQTY:", err);
-    setError(err.response?.data?.message || err.message || "Failed to start questionnaire");
-    throw err;
   }
   };
 
   //function to get next pair from backend
   const getNextPair = async () => {
     try {
-      const response = await axios.get(apiUrl("/next"), {
-        withCredentials: true,
-      });
+      const response = await axios.get(apiUrl("/next"));
       return response.data;
 
     } catch (error) {
@@ -182,19 +178,14 @@ const sendStockPick = async (stock) => {
 
   // only run once on mount
   useEffect(() => {
-    if (didFetchRef.current) return;
-    (async () => {
-      try {
-        await sendQuestionQTY();
-        await getNextPair();
-        await fetchStockData();
-      } catch (err) {
-        console.error("Failed to initialize questionnaire flow:", err);
-        setError(err.message);
-      } finally {
-        didFetchRef.current = true;
-      }
-    })();
+    if (!didFetchRef.current) {
+      sendQuestionQTY()
+        .then(() => getNextPair())
+        .then(() => fetchStockData())
+
+      //fetchTwoStocks();
+      didFetchRef.current = true;
+    }
   }, []);
 
   // when user picks a stock
@@ -232,15 +223,13 @@ const sendStockPick = async (stock) => {
 
   const reroll = async () => {
     try {
-      await axios.post(
-        apiUrl("/reroll"),
-        { reroll: true },
-        { withCredentials: true }
-      );
+      await axios.post(apiUrl("/reroll"), {
+        withCredentials: true,
+        reroll: true
+      });
       console.log('Reroll successful');
     } catch (error) {
       console.error('Error calling reroll:', error);
-      throw error;
     }
   };
 
@@ -248,13 +237,9 @@ const sendStockPick = async (stock) => {
   // reroll without picking
   const handleReroll = async () => {
     if (isComplete) return;
-    try {
-      await reroll();
-      await getNextPair();
-      await fetchStockData();
-    } catch (err) {
-      setError(err.response?.data?.message || err.message);
-    }
+    await reroll();
+    await getNextPair();
+    await fetchStockData();
   };
 
   const formatChangeClass = (stock) => {
@@ -275,7 +260,7 @@ const sendStockPick = async (stock) => {
       const signPct = pct > 0 ? "+" : "";
       parts.push(`${signPct}${pct.toFixed(2)}%`);
     }
-    return parts.length ? parts.join(" | ") : "N/A";
+    return parts.length ? parts.join(" | ") : "—";
   };
 
   // Save portfolio to backend
