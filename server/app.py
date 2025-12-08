@@ -1,20 +1,18 @@
 from flask import Flask, session, jsonify, request
 import requests
 import mysql.connector
-import urllib.request
 import os
 import random
 import time
-import csv
 from datetime import datetime, timedelta, timezone
 from flask_cors import CORS
 from dotenv import load_dotenv
-import urllib.parse
 import hashlib
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import stocks
 import yfinance as yf
+import stockUpdate
 import pandas as pd
 
 # Load    environment variables from .env file
@@ -28,7 +26,10 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True if using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
+# Let the cookie ride on whatever host we're running unless explicitly provided.
+session_cookie_domain = os.getenv("SESSION_COOKIE_DOMAIN")
+if session_cookie_domain:
+    app.config['SESSION_COOKIE_DOMAIN'] = session_cookie_domain
 
 
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
@@ -95,6 +96,14 @@ def get_db_connection():
         database=os.getenv("DB_NAME"),
         port=int(os.getenv("DB_PORT", 3306))
     )
+    
+def safe_float(val, default=None):
+    try:
+        if val in (None, "", "None"):
+            return default
+        return float(val)
+    except (TypeError, ValueError):
+        return default
 
 def safe_float(val, default=None):
     try:
@@ -366,8 +375,155 @@ def get_stock_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+#returns filtered list of tickers based on user preferences
+def filter_list(answers, questionQTY):
+    """Return a list of tickers based on questionnaire answers without throwing."""
+    answers = answers or {}
+    try:
+        qty = int(questionQTY or 0)
+    except (TypeError, ValueError):
+        qty = 0
+    qty = max(qty, 1)
+
+    try:
+        df = pd.read_csv(
+            "ticker_list.csv",
+            names=["ticker", "name", "country", "sectors", "industry"]
+        )
+    except Exception as exc:
+        print("Error reading ticker_list.csv:", exc)
+        return []
+
+    industry = (answers.get("industrySector") or "any").strip().lower()
+    filtered_df = df
+    if industry != "any":
+        print("Filtered DF by industry:", industry)
+        filtered_df = df[df.iloc[:, 3].str.lower() == industry]
+        print("Filtered DF:", filtered_df)
+
+    filtered_stocks = (
+        filtered_df["ticker"]
+        .dropna()
+        .astype(str)
+        .str.upper()
+        .tolist()
+    )
+
+    # If filter produced too few, fall back to the full list.
+    if len(filtered_stocks) < 2:
+        fallback = (
+            df["ticker"]
+            .dropna()
+            .astype(str)
+            .str.upper()
+            .tolist()
+        )
+        if fallback:
+            filtered_stocks = fallback
+
+    if not filtered_stocks:
+        return []
+
+    needed = qty * 2
+    if len(filtered_stocks) >= needed:
+        return random.sample(filtered_stocks, needed)
+
+    # If we do not have enough unique tickers, allow repeats to fill the list.
+    picks = filtered_stocks.copy()
+    while len(picks) < needed:
+        picks.append(random.choice(filtered_stocks))
+    random.shuffle(picks)
+    return picks
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Build dynamic SQL query based on filters
+        placeholders = ",".join(["%s"] * len(filtered_tickers))
+        query = f"""
+            SELECT 
+                ticker_symbol,
+                stock_price,
+                market_cap,
+                pe_ratio,
+                dividend_yield
+            FROM stock_List 
+            WHERE ticker_symbol IN ({placeholders})
+        """
+        
+        # Add filter conditions
+        conditions = []
+        params = list(filtered_tickers)
+        
+        # Market Cap Filter - matching frontend options exactly
+        if marketCap == "mega":
+            conditions.append("market_cap >= 200000000000")  # $200B+
+        elif marketCap == "large":
+            conditions.append("market_cap >= 10000000000 AND market_cap < 200000000000")  # $10B - $200B
+        elif marketCap == "medium":
+            conditions.append("market_cap >= 2000000000 AND market_cap < 10000000000")  # $2B - $10B
+        elif marketCap == "small":
+            conditions.append("market_cap >= 300000000 AND market_cap < 2000000000")  # $300M - $2B
+        elif marketCap == "micro":
+            conditions.append("market_cap < 300000000")  # Under $300M
+            
+        # P/E Ratio Filter - matching frontend options
+        if peRatio == "low":
+            conditions.append("pe_ratio < 15 AND pe_ratio > 0")
+        elif peRatio == "medium":
+            conditions.append("pe_ratio >= 15 AND pe_ratio < 25")
+        elif peRatio == "high":
+            conditions.append("pe_ratio >= 25")
+    
+        # Dividend Filter - matching frontend options
+        if dividend == "yes":
+            conditions.append("dividend_yield > 0")
+        elif dividend == "no":
+            conditions.append("(dividend_yield IS NULL OR dividend_yield = 0)")
+        # "any" means no filter
+        
+        # Append conditions to query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        
+        print(f"Executing query with {len(conditions)} additional filters")
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+                
+        print(f"Database returned {len(rows)} matching stocks")
+        
+        # Process results
+        for row in rows:
+            ticker = row.get('ticker_symbol')
+            if ticker:
+                final_stocks.append(ticker.strip().upper())
+
+                
+    except Exception as e:
+        print(f"Database error during filtering: {e}")
+        # Fallback to random selection from industry filter
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+            
+    # If no stocks match all filters, fallback to industry filter only
+    if not final_stocks:
+        print("No stocks match all filters, using industry filter only")
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+        
+    # Limit to questionQTY * 2 stocks for pairing
+    final_stocks = random.sample(final_stocks, min(questionQTY * 2, len(final_stocks)))
+    
+    return final_stocks
+
+
 # ---- Initialize Session ----
 
+@app.route("/api/init", methods=["POST"])
 @app.route("/init", methods=["POST"])
 def initialize():
     print("=" * 50)
@@ -379,8 +535,19 @@ def initialize():
     data = request.get_json()
     questionQTY = data.get("questionQTY")
     portolfioName = data.get("portfolioName")
-    stock_list = stocks.generate_ticker_list(questionQTY * 2)
+    answers = data.get("answers")
+    
+    filtered_stocks = filter_list(answers, questionQTY)
+    if not filtered_stocks:
+        return jsonify({
+            "status": "error",
+            "message": "No stocks available for the selected filters."
+        }), 400
+    
+    stock_list = filtered_stocks
     portfolio = []
+
+    print("Answers received in init:", answers)
     
     
     #set session variables 
@@ -393,12 +560,14 @@ def initialize():
         "status": "initialized", 
         "questionQTY": questionQTY, 
         "portfolioName": portolfioName,
-        "stock_list": stock_list
+        "answers": filtered_stocks,
+        "stock_list": stock_list,
     })
 
     return response
 
 # ---- Get Next Stock Pair ----
+@app.route("/api/next", methods=["GET"])
 @app.route("/next", methods=["GET"])
 def get_next_pair():
     print("=" * 50)
@@ -406,29 +575,33 @@ def get_next_pair():
     print("=" * 50)
 
     try:
-        if 'stock_list' not in session:
+        stock_list = session.get("stock_list")
+        if not isinstance(stock_list, list):
             return jsonify({
                 "status": "error",
                 "message": "Stock list not in session"
             }), 400
-        else:
-            stock_list = session.get("stock_list", "No stock List")
-            stock_pair = []
-            if len(stock_list) >= 2:
-                stock1 = stock_list.pop(0)
-                stock2 = stock_list.pop(0)
-                stock_pair = [stock1, stock2]
-                session["stock_list"] = stock_list
-                session["stock1"] = stock1
-                session["stock2"] = stock2
-                
-            elif len(stock_list) == 0:
-                #do somthing to end the stock picking
-                return jsonify({
-                    "status": "Complete",
-                    "message": "list is empty"
-                }), 400
+        stock_pair = []
+        if len(stock_list) >= 2:
+            stock1 = stock_list.pop(0)
+            stock2 = stock_list.pop(0)
+            stock_pair = [stock1, stock2]
+            session["stock_list"] = stock_list
+            session["stock1"] = stock1
+            session["stock2"] = stock2
             
+        elif len(stock_list) == 0:
+            #do somthing to end the stock picking
+            return jsonify({
+                "status": "Complete",
+                "message": "list is empty"
+            }), 400
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Not enough stocks left in session"
+            }), 400
+        
         return jsonify({
             "status": "success",
             "stock_list": stock_list,
@@ -439,13 +612,16 @@ def get_next_pair():
         return jsonify({"error": str(e)}), 500
 
 #route to reroll stock pair
+@app.route("/api/reroll", methods =["POST"])
 @app.route("/reroll", methods =["POST"])
 def reroll():
     print("=" * 50)
     print("REROLL ROUTE CALLED")
     print("=" * 50)
     
-    stock_list = session.get("stock_list", "No stock list in sessions")
+    stock_list = session.get("stock_list")
+    if not isinstance(stock_list, list):
+        return jsonify({"error": "No stock list in session"}), 400
     data = request.get_json()
     rerollBool = data.get("reroll", False)
     if(rerollBool):
@@ -459,6 +635,7 @@ def reroll():
 
 
 # ---- Pick Stock ----
+@app.route("/api/pick", methods=["POST"])
 @app.route("/pick", methods=["POST"])
 def pick_stock():
     print("=" * 50)
@@ -1483,10 +1660,11 @@ def portfolio_chart():
         if not ticker_counts:
             return jsonify({"intraday": [], "daily": [], "count": 0})
 
+        skip_cache = request.args.get("skipCache") == "1"
         cache_key = tuple(sorted(ticker_counts.items()))
         cached = chart_cache.get(cache_key)
         now_ts = time.time()
-        if cached and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
+        if cached and not skip_cache and (now_ts - cached.get("ts", 0)) < CHART_CACHE_TTL:
             payload = cached["data"]
             payload["fromCache"] = True
             payload["asOf"] = cached.get("asOf")
@@ -1517,6 +1695,7 @@ def portfolio_chart():
           "fromCache": False,
           "asOf": datetime.now(timezone.utc).isoformat(),
         }
+        # Refresh cache even when skipCache is used so future non-forced reads see the latest
         chart_cache[cache_key] = {"ts": now_ts, "data": payload, "asOf": payload["asOf"]}
         return jsonify(payload)
     except Exception as exc:

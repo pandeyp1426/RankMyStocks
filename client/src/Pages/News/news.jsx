@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import "./news.css"
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002"
+import { apiUrl } from "../../api"
 
 const formatRelative = (isoString) => {
     if (!isoString) return "Just now"
@@ -50,7 +49,7 @@ export function News() {
             if (force) qs.set("force", "1")
             qs.set("ts", Date.now().toString())
 
-            const res = await fetch(`${API_URL}/api/market-news?${qs.toString()}`, {
+            const res = await fetch(apiUrl(`/market-news?${qs.toString()}`), {
                 cache: "no-store",
             })
             if (!res.ok) {

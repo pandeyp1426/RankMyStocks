@@ -4,7 +4,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 40px;
-  width: 110%;
+  width: 100%;
   max-width: 1300px;
 }
 
@@ -40,9 +40,11 @@
   justify-content: center;
   align-items: flex-start;
   background: linear-gradient(180deg, #7163f1 0%, #9b6df8 100%);
-  padding: 80px 0;
+  padding: 140px 24px 100px;
   border-radius: 32px;
-
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 90px; /* clear the fixed navbar */
 }
 
 
@@ -358,5 +360,12 @@
   .portfolio-box {
     max-width: 100%;
     margin-top: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .questionair-page {
+    margin-top: 70px;
+    padding: 120px 16px 80px;
   }
 }

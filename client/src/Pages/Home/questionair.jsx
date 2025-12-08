@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
 import axios from "axios";
-import "./Questionair.css";
+import "./questionair.css";
+import { apiUrl } from "../../api";
 
 axios.defaults.withCredentials = true;
 
@@ -14,6 +15,9 @@ export function Questionair() {
   const questionQTY = useSelector((state) => state.questionQTY.value);
   const activeUserId = useSelector((state) => state.auth.userID);
   const { isAuthenticated, user, loginWithRedirect } = useAuth0();
+  const answers = useSelector(state => state.questionnaire.answers);
+
+
   
   const [stock1, setStock1] = useState(null);
   const [stock2, setStock2] = useState(null);
@@ -23,8 +27,6 @@ export function Questionair() {
   const [loading, setLoading] = useState(false);
   const didFetchRef = useRef(false);
 
-   // 👇 API URL comes from .env (client/.env)
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002";
 
   // Resolve the current user id from Redux or Auth0
   const resolvedUserId = activeUserId || user?.sub || null;
@@ -39,34 +41,10 @@ export function Questionair() {
     return null;
   }
   
-  // fetch two unique random stocks
-  const fetchTwoStocks = async () => {
-    try {
-      let data1, data2;
-
-      do {
-        data1 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data1 || !data1.ticker || data1.ticker === "Symbol");
-
-
-      do {
-        data2 = await (await fetch(`${API_URL}/api/random-stock`)).json();
-      } while (!data2 || !data2.ticker || data2.ticker === data1.ticker || data2.ticker === "Symbol");
-
-      
-      console.log("Fetched stock1:", data1);
-      console.log("Fetched stock2:", data2);
-      
-      setStock1(data1);
-      setStock2(data2);
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
 
   async function fetchStockInfo(ticker) {
     try {
-      const res = await fetch(`${API_URL}/api/stock-info?ticker=${encodeURIComponent(ticker)}`);
+      const res = await fetch(apiUrl(`/stock-info?ticker=${encodeURIComponent(ticker)}`));
       if (!res.ok) {
         throw new Error(`Stock info lookup failed (${res.status})`);
       }
@@ -93,12 +71,13 @@ useEffect(() => {
 }, [stock1?.ticker, stock2?.ticker]);
 
 
-  //function to send questionQTY and portfolio name to backend
+  //function to send questionQTY, portfolio name, and other questionnaire answers to backend
   const sendQuestionQTY = async () => {
     try {
-      const response = await axios.post(`${API_URL}/init`, {
+      const response = await axios.post(apiUrl("/init"), {
         portfolioName: portfolioName,
-        questionQTY: questionQTY
+        questionQTY: questionQTY,
+        answers: answers,
     },
     {
       withCredentials: true
@@ -109,13 +88,17 @@ useEffect(() => {
     return response.data;
   } catch (err) {
     console.error("Error sending questionQTY:", err);
+    setError(err.response?.data?.message || err.message || "Failed to start questionnaire");
+    throw err;
   }
   };
 
   //function to get next pair from backend
   const getNextPair = async () => {
     try {
-      const response = await axios.get(`${API_URL}/next`);
+      const response = await axios.get(apiUrl("/next"), {
+        withCredentials: true,
+      });
       return response.data;
 
     } catch (error) {
@@ -138,7 +121,7 @@ const fetchStockData = async () => {
   setError(null);
 
   try {
-    const response = await axios.get(`${API_URL}/api/get-stock-data`, {
+    const response = await axios.get(apiUrl("/get-stock-data"), {
       withCredentials: true
     });
     
@@ -181,7 +164,7 @@ const fetchStockData = async () => {
 
 const sendStockPick = async (stock) => {
     try {
-      const response = await axios.post(`${API_URL}/pick`, {
+      const response = await axios.post(apiUrl("/pick"), {
         stockPick: stock
     },
     {
@@ -199,15 +182,20 @@ const sendStockPick = async (stock) => {
 
   // only run once on mount
   useEffect(() => {
-    if (!didFetchRef.current) {
-      sendQuestionQTY()
-        .then(() => getNextPair())
-        .then(() => fetchStockData())
-
-      //fetchTwoStocks();
-      didFetchRef.current = true;
-    }
-  }, [API_URL]);
+    if (didFetchRef.current) return;
+    (async () => {
+      try {
+        await sendQuestionQTY();
+        await getNextPair();
+        await fetchStockData();
+      } catch (err) {
+        console.error("Failed to initialize questionnaire flow:", err);
+        setError(err.message);
+      } finally {
+        didFetchRef.current = true;
+      }
+    })();
+  }, []);
 
   // when user picks a stock
   const handlePick = async (stock) => {
@@ -244,13 +232,15 @@ const sendStockPick = async (stock) => {
 
   const reroll = async () => {
     try {
-      await axios.post(`${API_URL}/reroll`, {
-        withCredentials: true,
-        reroll: true
-      });
+      await axios.post(
+        apiUrl("/reroll"),
+        { reroll: true },
+        { withCredentials: true }
+      );
       console.log('Reroll successful');
     } catch (error) {
       console.error('Error calling reroll:', error);
+      throw error;
     }
   };
 
@@ -258,9 +248,13 @@ const sendStockPick = async (stock) => {
   // reroll without picking
   const handleReroll = async () => {
     if (isComplete) return;
-    await reroll();
-    await getNextPair();
-    await fetchStockData();
+    try {
+      await reroll();
+      await getNextPair();
+      await fetchStockData();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    }
   };
 
   const formatChangeClass = (stock) => {
@@ -281,7 +275,7 @@ const sendStockPick = async (stock) => {
       const signPct = pct > 0 ? "+" : "";
       parts.push(`${signPct}${pct.toFixed(2)}%`);
     }
-    return parts.length ? parts.join(" | ") : "—";
+    return parts.length ? parts.join(" | ") : "N/A";
   };
 
   // Save portfolio to backend
@@ -303,7 +297,7 @@ const sendStockPick = async (stock) => {
     }));
 
     try {
-      const res = await fetch(`${API_URL}/api/portfolios`, {
+      const res = await fetch(apiUrl("/portfolios"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -338,12 +332,12 @@ const sendStockPick = async (stock) => {
 
         {!isComplete && (
         <div className="stock-compare-container">
-          {stock1 && (
-            <div
-              className="stock-card"
-              onClick={() => !isComplete && handlePick(stock1)}
-              role="button"
-              tabIndex={0}
+              {stock1 && (
+                <div
+                  className="stock-card"
+                  onClick={() => !isComplete && handlePick(stock1)}
+                  role="button"
+                  tabIndex={0}
             >
               <button className="info-icon" title={stock1.description}>ⓘ</button>
               <h3 className="stock-ticker">{stock1.ticker}</h3>
@@ -353,23 +347,23 @@ const sendStockPick = async (stock) => {
             </div>
           )}
 
-          <div className="vs-text">VS</div>
+              <div className="vs-text">VS</div>
 
-          {stock2 && (
-            <div
-              className="stock-card"
-              onClick={() => !isComplete && handlePick(stock2)}
-              role="button"
-              tabIndex={0}
-            >
-              <button className="info-icon" title={stock2.description}>ⓘ</button>
-              <h3 className="stock-ticker">{stock2.ticker}</h3>
-              <p className="stock-name">{stock2.name}</p>
-              <p className="stock-price">${Number(stock2.price || 0).toFixed(2)}</p>
-              <p className={`stock-change ${formatChangeClass(stock2)}`}>{formatChange(stock2)}</p>
+              {stock2 && (
+                <div
+                  className="stock-card"
+                  onClick={() => !isComplete && handlePick(stock2)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <button className="info-icon" title={stock2.description}>ⓘ</button>
+                  <h3 className="stock-ticker">{stock2.ticker}</h3>
+                  <p className="stock-name">{stock2.name}</p>
+                  <p className="stock-price">${Number(stock2.price || 0).toFixed(2)}</p>
+                  <p className={`stock-change ${formatChangeClass(stock2)}`}>{formatChange(stock2)}</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
         )}
 
         {isComplete ? (
