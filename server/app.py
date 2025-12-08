@@ -96,6 +96,14 @@ def get_db_connection():
         database=os.getenv("DB_NAME"),
         port=int(os.getenv("DB_PORT", 3306))
     )
+    
+def safe_float(val, default=None):
+    try:
+        if val in (None, "", "None"):
+            return default
+        return float(val)
+    except (TypeError, ValueError):
+        return default
 
 def safe_float(val, default=None):
     try:
@@ -367,7 +375,7 @@ def get_stock_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-#creates list of stocks based on useres preferences
+#returns filtered list of tickers based on user preferences
 def filter_list(answers, questionQTY):
     """Return a list of tickers based on questionnaire answers without throwing."""
     answers = answers or {}
@@ -427,6 +435,92 @@ def filter_list(answers, questionQTY):
     random.shuffle(picks)
     return picks
     
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Build dynamic SQL query based on filters
+        placeholders = ",".join(["%s"] * len(filtered_tickers))
+        query = f"""
+            SELECT 
+                ticker_symbol,
+                stock_price,
+                market_cap,
+                pe_ratio,
+                dividend_yield
+            FROM stock_List 
+            WHERE ticker_symbol IN ({placeholders})
+        """
+        
+        # Add filter conditions
+        conditions = []
+        params = list(filtered_tickers)
+        
+        # Market Cap Filter - matching frontend options exactly
+        if marketCap == "mega":
+            conditions.append("market_cap >= 200000000000")  # $200B+
+        elif marketCap == "large":
+            conditions.append("market_cap >= 10000000000 AND market_cap < 200000000000")  # $10B - $200B
+        elif marketCap == "medium":
+            conditions.append("market_cap >= 2000000000 AND market_cap < 10000000000")  # $2B - $10B
+        elif marketCap == "small":
+            conditions.append("market_cap >= 300000000 AND market_cap < 2000000000")  # $300M - $2B
+        elif marketCap == "micro":
+            conditions.append("market_cap < 300000000")  # Under $300M
+            
+        # P/E Ratio Filter - matching frontend options
+        if peRatio == "low":
+            conditions.append("pe_ratio < 15 AND pe_ratio > 0")
+        elif peRatio == "medium":
+            conditions.append("pe_ratio >= 15 AND pe_ratio < 25")
+        elif peRatio == "high":
+            conditions.append("pe_ratio >= 25")
+    
+        # Dividend Filter - matching frontend options
+        if dividend == "yes":
+            conditions.append("dividend_yield > 0")
+        elif dividend == "no":
+            conditions.append("(dividend_yield IS NULL OR dividend_yield = 0)")
+        # "any" means no filter
+        
+        # Append conditions to query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        
+        print(f"Executing query with {len(conditions)} additional filters")
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+                
+        print(f"Database returned {len(rows)} matching stocks")
+        
+        # Process results
+        for row in rows:
+            ticker = row.get('ticker_symbol')
+            if ticker:
+                final_stocks.append(ticker.strip().upper())
+
+                
+    except Exception as e:
+        print(f"Database error during filtering: {e}")
+        # Fallback to random selection from industry filter
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+            
+    # If no stocks match all filters, fallback to industry filter only
+    if not final_stocks:
+        print("No stocks match all filters, using industry filter only")
+        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+        
+    # Limit to questionQTY * 2 stocks for pairing
+    final_stocks = random.sample(final_stocks, min(questionQTY * 2, len(final_stocks)))
+    
+    return final_stocks
+
+
 # ---- Initialize Session ----
 
 @app.route("/api/init", methods=["POST"])
