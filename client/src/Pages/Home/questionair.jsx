@@ -88,6 +88,8 @@ useEffect(() => {
     return response.data;
   } catch (err) {
     console.error("Error sending questionQTY:", err);
+    setError(err.response?.data?.message || err.message || "Failed to start questionnaire");
+    throw err;
   }
   };
 
@@ -180,14 +182,19 @@ const sendStockPick = async (stock) => {
 
   // only run once on mount
   useEffect(() => {
-    if (!didFetchRef.current) {
-      sendQuestionQTY()
-        .then(() => getNextPair())
-        .then(() => fetchStockData())
-
-      //fetchTwoStocks();
-      didFetchRef.current = true;
-    }
+    if (didFetchRef.current) return;
+    (async () => {
+      try {
+        await sendQuestionQTY();
+        await getNextPair();
+        await fetchStockData();
+      } catch (err) {
+        console.error("Failed to initialize questionnaire flow:", err);
+        setError(err.message);
+      } finally {
+        didFetchRef.current = true;
+      }
+    })();
   }, []);
 
   // when user picks a stock
@@ -233,6 +240,7 @@ const sendStockPick = async (stock) => {
       console.log('Reroll successful');
     } catch (error) {
       console.error('Error calling reroll:', error);
+      throw error;
     }
   };
 
@@ -240,9 +248,13 @@ const sendStockPick = async (stock) => {
   // reroll without picking
   const handleReroll = async () => {
     if (isComplete) return;
-    await reroll();
-    await getNextPair();
-    await fetchStockData();
+    try {
+      await reroll();
+      await getNextPair();
+      await fetchStockData();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    }
   };
 
   const formatChangeClass = (stock) => {
@@ -263,7 +275,7 @@ const sendStockPick = async (stock) => {
       const signPct = pct > 0 ? "+" : "";
       parts.push(`${signPct}${pct.toFixed(2)}%`);
     }
-    return parts.length ? parts.join(" | ") : "—";
+    return parts.length ? parts.join(" | ") : "N/A";
   };
 
   // Save portfolio to backend

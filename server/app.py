@@ -26,7 +26,10 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True if using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_DOMAIN'] = 'localhost'
+# Let the cookie ride on whatever host we're running unless explicitly provided.
+session_cookie_domain = os.getenv("SESSION_COOKIE_DOMAIN")
+if session_cookie_domain:
+    app.config['SESSION_COOKIE_DOMAIN'] = session_cookie_domain
 
 
 CORS(app, supports_credentials=True, origins=['http://localhost:5001'])
@@ -366,27 +369,63 @@ def get_stock_data():
 
 #creates list of stocks based on useres preferences
 def filter_list(answers, questionQTY):
-    #first filter by industry
-    industry = answers.get("industrySector", "any")
-    
-    #data frame = all stocks from csv
-    df = pd.read_csv("ticker_list.csv", names=['ticker', 'name', 'country', 'sectors', 'industry'])
-    
-    #if industry is any return full df otherwise return filtered df
-    #filter by industry
-    if(industry != "any"):
-        #filter by industry sector
+    """Return a list of tickers based on questionnaire answers without throwing."""
+    answers = answers or {}
+    try:
+        qty = int(questionQTY or 0)
+    except (TypeError, ValueError):
+        qty = 0
+    qty = max(qty, 1)
+
+    try:
+        df = pd.read_csv(
+            "ticker_list.csv",
+            names=["ticker", "name", "country", "sectors", "industry"]
+        )
+    except Exception as exc:
+        print("Error reading ticker_list.csv:", exc)
+        return []
+
+    industry = (answers.get("industrySector") or "any").strip().lower()
+    filtered_df = df
+    if industry != "any":
         print("Filtered DF by industry:", industry)
-        #filters by industry sector
-        df = df[df.iloc[:, 3].str.lower() == industry.lower()]
-        print("Filtered DF:", df)
-        filtered_stocks = df['ticker'].tolist()
-        print("Filtered Stocks List:", filtered_stocks)
-        
-    #only filtered by industry for now
-    random_filtered_tickers = random.sample(filtered_stocks, questionQTY * 2)
-    
-    return random_filtered_tickers
+        filtered_df = df[df.iloc[:, 3].str.lower() == industry]
+        print("Filtered DF:", filtered_df)
+
+    filtered_stocks = (
+        filtered_df["ticker"]
+        .dropna()
+        .astype(str)
+        .str.upper()
+        .tolist()
+    )
+
+    # If filter produced too few, fall back to the full list.
+    if len(filtered_stocks) < 2:
+        fallback = (
+            df["ticker"]
+            .dropna()
+            .astype(str)
+            .str.upper()
+            .tolist()
+        )
+        if fallback:
+            filtered_stocks = fallback
+
+    if not filtered_stocks:
+        return []
+
+    needed = qty * 2
+    if len(filtered_stocks) >= needed:
+        return random.sample(filtered_stocks, needed)
+
+    # If we do not have enough unique tickers, allow repeats to fill the list.
+    picks = filtered_stocks.copy()
+    while len(picks) < needed:
+        picks.append(random.choice(filtered_stocks))
+    random.shuffle(picks)
+    return picks
     
 # ---- Initialize Session ----
 
@@ -405,6 +444,11 @@ def initialize():
     answers = data.get("answers")
     
     filtered_stocks = filter_list(answers, questionQTY)
+    if not filtered_stocks:
+        return jsonify({
+            "status": "error",
+            "message": "No stocks available for the selected filters."
+        }), 400
     
     stock_list = filtered_stocks
     portfolio = []
@@ -437,29 +481,33 @@ def get_next_pair():
     print("=" * 50)
 
     try:
-        if 'stock_list' not in session:
+        stock_list = session.get("stock_list")
+        if not isinstance(stock_list, list):
             return jsonify({
                 "status": "error",
                 "message": "Stock list not in session"
             }), 400
-        else:
-            stock_list = session.get("stock_list", "No stock List")
-            stock_pair = []
-            if len(stock_list) >= 2:
-                stock1 = stock_list.pop(0)
-                stock2 = stock_list.pop(0)
-                stock_pair = [stock1, stock2]
-                session["stock_list"] = stock_list
-                session["stock1"] = stock1
-                session["stock2"] = stock2
-                
-            elif len(stock_list) == 0:
-                #do somthing to end the stock picking
-                return jsonify({
-                    "status": "Complete",
-                    "message": "list is empty"
-                }), 400
+        stock_pair = []
+        if len(stock_list) >= 2:
+            stock1 = stock_list.pop(0)
+            stock2 = stock_list.pop(0)
+            stock_pair = [stock1, stock2]
+            session["stock_list"] = stock_list
+            session["stock1"] = stock1
+            session["stock2"] = stock2
             
+        elif len(stock_list) == 0:
+            #do somthing to end the stock picking
+            return jsonify({
+                "status": "Complete",
+                "message": "list is empty"
+            }), 400
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Not enough stocks left in session"
+            }), 400
+        
         return jsonify({
             "status": "success",
             "stock_list": stock_list,
@@ -477,7 +525,9 @@ def reroll():
     print("REROLL ROUTE CALLED")
     print("=" * 50)
     
-    stock_list = session.get("stock_list", "No stock list in sessions")
+    stock_list = session.get("stock_list")
+    if not isinstance(stock_list, list):
+        return jsonify({"error": "No stock list in session"}), 400
     data = request.get_json()
     rerollBool = data.get("reroll", False)
     if(rerollBool):
