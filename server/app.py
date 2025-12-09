@@ -39,6 +39,16 @@ market_news_cache = {"ts": 0.0, "articles": [], "as_of": None, "error": None}
 CHART_CACHE_TTL = 15 * 60  # seconds (15 minutes)
 chart_cache = {}
 
+def get_db_connection():
+    """Create and return a new MySQL database connection."""
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        port=int(os.getenv("DB_PORT", 3306)),
+    )
+
 
 def get_latest_prices_from_db(tickers):
     """
