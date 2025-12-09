@@ -3,6 +3,7 @@ import { Navbar } from "./Components/Navbar/navbar.jsx"
 import { Outlet } from "react-router-dom"
 import { Footer } from "./Components/Footer/footer.jsx"
 import { AnimatedBackground } from "./Components/MarketBackground/AnimatedBackground.jsx"
+import { useLocation } from "react-router-dom"
 
 const getPreferredTheme = () => {
     if (typeof window === "undefined") return "dark"
@@ -16,6 +17,7 @@ const getPreferredTheme = () => {
 
 export function Layout() {
     const [theme, setTheme] = useState(getPreferredTheme)
+    const location = useLocation()
 
     useEffect(() => {
         const classList = document.body.classList
@@ -28,6 +30,11 @@ export function Layout() {
     const toggleTheme = () => {
         setTheme((prev) => (prev === "dark" ? "light" : "dark"))
     }
+
+    // Safety net: ensure body scroll isn't stuck after modals/route changes
+    useEffect(() => {
+        document.body.style.overflow = "auto"
+    }, [location.pathname])
 
     return (
         <div className="layout-shell" data-theme={theme}>
