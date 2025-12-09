@@ -36,15 +36,18 @@
   color: #333;
 }
 .questionair-page {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   background: linear-gradient(180deg, #7163f1 0%, #9b6df8 100%);
-  padding: 140px 24px 100px;
+  padding: 170px 24px 140px;
   border-radius: 32px;
   width: 100%;
   box-sizing: border-box;
-  margin-top: 90px; /* clear the fixed navbar */
+  min-height: 100vh;
+  overflow: visible;
 }
 
 
@@ -70,6 +73,7 @@
   flex-wrap: nowrap;        /* keep on one line */
   margin-top: 25px;
   width: 100%;
+  min-height: 320px;
 }
 
 /* ===== Stock Cards ===== */

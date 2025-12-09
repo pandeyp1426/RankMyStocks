@@ -17,7 +17,7 @@ export function QuestionnaireContent({ onComplete }) {
     industrySector: "any",
     marketCap: "any",
     peRatio: "any",
-    dividends: "either",
+    dividends: "any",
     analystRating: "any"
   };
   const [answers, setAnswers] = useState({ ...neutralAnswers });

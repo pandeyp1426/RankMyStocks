@@ -86,25 +86,6 @@ from stocks import (
 )
 
 
-#  Reusable DB Connection
-def get_db_connection():
-    """Create and return a new MySQL database connection."""
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-        port=int(os.getenv("DB_PORT", 3306))
-    )
-    
-def safe_float(val, default=None):
-    try:
-        if val in (None, "", "None"):
-            return default
-        return float(val)
-    except (TypeError, ValueError):
-        return default
-
 def safe_float(val, default=None):
     try:
         if val in (None, "", "None"):
@@ -377,11 +358,20 @@ def get_stock_data():
 
 #returns filtered list of tickers based on user preferences
 def filter_list(answers, questionQTY):
+    try:
+        qty = int(questionQTY or 0)
+    except (TypeError, ValueError):
+        qty = 0
+    qty = max(qty, 1)
+
+    answers = answers or {}
+
     #user preferences from questionnaire
-    industry = answers.get("industrySector", "any")
-    marketCap = answers.get("marketCap", "any")
-    peRatio = answers.get("peRatio", "any")
-    dividend = answers.get("dividend", "any")
+    industry = (answers.get("industrySector") or "any").strip()
+    marketCap = (answers.get("marketCap") or "any").strip().lower()
+    peRatio = (answers.get("peRatio") or "any").strip().lower()
+    dividend_raw = (answers.get("dividends") or answers.get("dividend") or "any").strip().lower()
+    dividend = "any" if dividend_raw in ("any", "either", "") else dividend_raw
     
     #data frame = all stocks from csv
     df = pd.read_csv("ticker_list.csv", names=['ticker', 'name', 'country', 'sectors', 'industry'])
@@ -402,7 +392,7 @@ def filter_list(answers, questionQTY):
     # If no additional filters, return random sample
     if (marketCap == "any" and peRatio == "any" and dividend == "any"):
         print("No additional filters, returning random sample")
-        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+        return random.sample(filtered_tickers, min(qty * 2, len(filtered_tickers)))
     
     # Further filter based on marketCap, peRatio, dividend
     # query databse for stock metrics
@@ -478,7 +468,7 @@ def filter_list(answers, questionQTY):
     except Exception as e:
         print(f"Database error during filtering: {e}")
         # Fallback to random selection from industry filter
-        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+        return random.sample(filtered_tickers, min(qty * 2, len(filtered_tickers)))
     finally:
         if cursor:
             cursor.close()
@@ -488,10 +478,10 @@ def filter_list(answers, questionQTY):
     # If no stocks match all filters, fallback to industry filter only
     if not final_stocks:
         print("No stocks match all filters, using industry filter only")
-        return random.sample(filtered_tickers, min(questionQTY * 2, len(filtered_tickers)))
+        return random.sample(filtered_tickers, min(qty * 2, len(filtered_tickers)))
         
     # Limit to questionQTY * 2 stocks for pairing
-    final_stocks = random.sample(final_stocks, min(questionQTY * 2, len(final_stocks)))
+    final_stocks = random.sample(final_stocks, min(qty * 2, len(final_stocks)))
     
     return final_stocks
 
