@@ -232,7 +232,7 @@ export function QuestionnaireContent({ onComplete }) {
                 <option value="">-- Select an option --</option>
                 <option value="yes">Yes - Dividend Paying Only</option>
                 <option value="no">No - Non-Dividend Stocks</option>
-                <option value="either">Either - No Preference</option>
+                <option value="any">Either - No Preference</option>
             </select>
             </div>
 
