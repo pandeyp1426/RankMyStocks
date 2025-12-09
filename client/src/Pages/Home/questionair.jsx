@@ -162,6 +162,16 @@ const fetchStockData = async () => {
 };
 
 
+// Ensure page never leaves body stuck in overflow hidden (e.g. after popups)
+useEffect(() => {
+  const prevOverflow = document.body.style.overflow;
+  document.body.style.overflow = "auto";
+  return () => {
+    document.body.style.overflow = prevOverflow;
+  };
+}, []);
+
+
 const sendStockPick = async (stock) => {
     try {
       const response = await axios.post(apiUrl("/pick"), {
