@@ -489,9 +489,27 @@ def filter_list(answers, questionQTY):
     if not final_stocks:
         print("No stocks match all filters, using industry filter only")
         return random.sample(filtered_tickers, min(qty * 2, len(filtered_tickers)))
+    
+    # NEW FEATURE: If filtered stocks are less than needed, fill with random stocks from sector
+    target_qty = qty * 2
+    if len(final_stocks) < target_qty:
+        print(f"Only {len(final_stocks)} stocks match filters, need {target_qty}")
+        print("Filling remaining slots with random stocks from sector")
         
-    # Limit to questionQTY * 2 stocks for pairing
-    final_stocks = random.sample(final_stocks, min(qty * 2, len(final_stocks)))
+        # Get stocks that aren't already in final_stocks
+        available_stocks = [t for t in filtered_tickers if t not in final_stocks]
+        
+        # Calculate how many more we need
+        needed = target_qty - len(final_stocks)
+        
+        # Add random stocks from the sector to fill the gap
+        if available_stocks:
+            additional_stocks = random.sample(available_stocks, min(needed, len(available_stocks)))
+            final_stocks.extend(additional_stocks)
+            print(f"Added {len(additional_stocks)} random stocks from sector")
+    
+    # Limit to questionQTY * 2 stocks (in case we somehow got more)
+    final_stocks = final_stocks[:target_qty]
     
     return final_stocks
 
