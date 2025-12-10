@@ -20,7 +20,17 @@ export function QuestionnaireContent({ onComplete }) {
     dividends: "any",
     analystRating: "any"
   };
-  const [answers, setAnswers] = useState({ ...neutralAnswers });
+  // Initialize with empty strings for validation
+  const [answers, setAnswers] = useState({
+    investmentHorizon: "",
+    experienceLevel: "",
+    primaryGoal: "",
+    industrySector: "",  // Empty for validation
+    marketCap: "",
+    peRatio: "",
+    dividends: "",
+    analystRating: ""
+  });
 
   const totalPages = 5; // Number of questions/pages
 
