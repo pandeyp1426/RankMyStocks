@@ -1,150 +1,63 @@
-Project Setup/How To Run
+# RankMyStocks
 
+RankMyStocks is a full-stack stock portfolio app that helps users build, save, compare, and rank portfolios using live stock data, market news, and AI-generated stock insights.
 
-How to run (backend)-  
+## Features
 
-Ensure flask is installed (“pip3 install flask”)  
+- Create portfolios through a stock comparison questionnaire
+- View saved portfolios with value and performance tracking
+- Rank portfolios by value, holdings, or percentage change
+- Search stocks and view key fundamentals
+- Read live market news with ticker and category filters
+- Get AI-generated daily stock summaries
 
-Change your working directory to server (“cd server”) 
+## Tech Stack
 
-Run the flask server (“python3 app.py”) 
+- React
+- Vite
+- Flask
+- MySQL
+- Auth0
+- yfinance
+- OpenAI / LangChain
 
-OR  
+## How to Run
 
-Open Terminal 
+### Backend
 
-cd server 
-
-.\.venv\Scripts\activate 
-
-flask –-app app run 
-
-If you can't get your venv running 
-
-open terminal
-
+```bash
 cd server
+pip install -r requirements.txt
+python app.py
+```
 
-Remove-Item -Recurse -Force .venv
+The Flask API runs on `http://localhost:5002`.
 
-python -m ensurepip --upgrade
+### Frontend
 
-python -m venv .venv
+```bash
+cd client
+npm install
+npm run dev
+```
 
-.venv\Scripts\Activate.ps1     
+The React app runs on `http://localhost:5001`.
 
-flask --app app run
+## Environment Variables
 
+Create a `.env` file for the backend with your database and API credentials, such as:
 
-Front End-  
+```env
+DB_HOST=
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+DB_PORT=
+API_KEY=
+```
 
-Assuming you’re in the rank my stocks folder open a new terminal. 
+Create a `.env` file in `client` for frontend configuration:
 
-Change the terminal to GitBash 
-
-Create a .env file in client and add dependencies in  
-     REACT_APP_AUTH0_DOMAIN=dev-xnrub1mhoq8kojoy.us.auth0.com 
-     REACT_APP_AUTH0_CLIENT_ID=SDDSZVTGaXylIWeF5f4cY99oUYa0Kjrh 
-
-Type (“cd client”) 
-
-Type (“npm install”) 
-
-Type (“npm run dev”) 
-
-Click the link to local host 
-
-
-
-File Path & Description
-
-C:.
-│   .gitignore
-│   package-lock.json
-│   package.json
-│   README.md
-│
-├───client
-│   │   .gitignore
-│   │   eslint.config.js
-│   │   index.html
-│   │   package-lock.json
-│   │   package.json
-│   │   README.md
-│   │   vite.config.js
-│   │
-│   ├───public
-│   │       logo.png
-│   │
-│   └───src
-│       │   App.css
-│       │   App.jsx                           # Creates initial paths to pages
-│       │   index.css
-│       │   layout.jsx                        # Hosts navbar utilities
-│       │   main.jsx                          # Initial calls to global functions & imports
-│       │   store.jsx                         # Stores shared states for components like portfolioName & numSlider
-│       │
-│       ├───assets
-│       │   │   layout.css
-│       │   │
-│       │   └───img
-│       │           delete.png
-│       │           logo.png
-│       │
-│       ├───Components
-│       │   ├───CreatePopUp
-│       │   │       createPortfolioPopup.css
-│       │   │       nameCheck.css
-│       │   │       nameCheck.jsx
-│       │   │       numSlider.css
-│       │   │       numSlider.jsx             # Changes the numSlider state → passed to numSliderSlicer → stored in store.jsx
-│       │   │       numSliderSlicer.jsx
-│       │   │       popup.css
-│       │   │       popup.jsx                 # Backbone for popup; manages open/close logic
-│       │   │       portfolioName.css
-│       │   │       portfolioName.jsx         # Changes portfolioName state → passed to portfolioNameSlicer → stored in store.jsx
-│       │   │       portfolioNameSlicer.jsx
-│       │   │       questionQueue.jsx
-│       │   │
-│       │   ├───Footer
-│       │   │       footer.css
-│       │   │       footer.jsx
-│       │   │
-│       │   ├───MarketBackground
-│       │   │       AnimatedBackground.css
-│       │   │       AnimatedBackground.jsx
-│       │   │
-│       │   ├───Navbar
-│       │   │       authSlicer.jsx
-│       │   │       navbar.css
-│       │   │       navbar.jsx                # Creates navigation links between pages
-│       │   │
-│       │   ├───PortfolioChart
-│       │   │       portfolioChart.css
-│       │   │       portfolioChart.jsx
-│       │   │
-│       │   └───StockSearch
-│       │           stockSearch.css
-│       │           stockSearch.jsx
-│       │
-│       └───Pages
-│           ├───Home
-│           │       home.css
-│           │       home.jsx                  # Welcome message & create-portfolio button logic
-│           │       questionair.css
-│           │       questionair.jsx           # Queue functionality for displaying stocks & descriptions
-│           │
-│           ├───MyPortfolio
-│           │       myPortfolios.css
-│           │       myPortfolios.jsx          # Holds user portfolios... what the heck is a python
-│           │
-│           └───Rankings
-│                   portfolioRankings.css
-│                   portfolioRankings.jsx      # Just a header for now
-│
-└───server
-        app.py
-        requirements.txt
-        stocks.py
-        stockUpdate.py
-        ticker_list.csv
+```env
+VITE_API_URL=http://localhost:5002
+```
